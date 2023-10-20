@@ -1,0 +1,37 @@
+apiVersion: stack.zncdata.net/v1alpha1
+kind: Airbyte
+metadata:
+  labels:
+    app.kubernetes.io/name: airbyte
+    app.kubernetes.io/instance: airbyte
+    app.kubernetes.io/part-of: airbyte-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: airbyte-operator
+  name: airbyte
+spec:
+  # TODO(user): Add fields here
+  replicas: 1
+  image: 
+    repository: airbyte/server
+    tag: 0.50.30
+    pullPolicy: IfNotPresent
+  resource:
+    requests:
+        cpu: 100m
+        memory: 512Mi
+  service:
+    port: 8001
+    type: ClusterIP
+  persistence:
+    accessMode: ReadWriteOnce
+    storageClassName: local-path
+    storageSize: 1Gi
+  secret:
+    airbyte-secrets:
+        AWS_ACCESS_KEY_ID: ""
+        AWS_SECRET_ACCESS_KEY: ""
+        DATABASE_PASSWORD: ""
+        DATABASE_USER: ""
+        STATE_STORAGE_MINIO_ACCESS_KEY: ""
+    gcs-log-creds:
+      gcp.json: ""

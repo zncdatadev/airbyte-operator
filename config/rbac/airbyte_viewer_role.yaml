@@ -1,0 +1,27 @@
+# permissions for end users to view airbytes.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: airbyte-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: airbyte-operator
+    app.kubernetes.io/part-of: airbyte-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: airbyte-viewer-role
+rules:
+- apiGroups:
+  - stack.zncdata.net
+  resources:
+  - airbytes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - stack.zncdata.net
+  resources:
+  - airbytes/status
+  verbs:
+  - get
