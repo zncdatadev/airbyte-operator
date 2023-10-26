@@ -1,0 +1,45 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: '[]'
+    capabilities: Basic Install
+  name: airbyte-operator.v0.0.0
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: Airbyte is the Schema for the airbytes API
+      displayName: Airbyte
+      kind: Airbyte
+      name: airbytes.stack.zncdata.net
+      version: v1alpha1
+  description: airbyte operator
+  displayName: airbyte-operator
+  icon:
+  - base64data: ""
+    mediatype: ""
+  install:
+    spec:
+      deployments: null
+    strategy: ""
+  installModes:
+  - supported: true
+    type: OwnNamespace
+  - supported: true
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: false
+    type: AllNamespaces
+  keywords:
+  - airbyte
+  links:
+  - name: Airbyte Operator
+    url: https://airbyte-operator.domain
+  maturity: alpha
+  provider:
+    name: zncdata-labs
+    url: https://github.com/zncdata-labs
+  version: 0.0.0
