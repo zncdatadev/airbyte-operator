@@ -10,6 +10,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -23,7 +24,7 @@ func (r *AirbyteReconciler) makeServerService(instance *stackv1alpha1.Airbyte, s
 	labels := instance.GetLabels()
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        instance.Name,
+			Name:        instance.GetNameWithSuffix("-airbyte-server-svc"),
 			Namespace:   instance.Namespace,
 			Labels:      labels,
 			Annotations: instance.Spec.Server.Service.Annotations,
@@ -362,9 +363,9 @@ func (r *AirbyteReconciler) makeServerDeployment(instance *stackv1alpha1.Airbyte
 func (r *AirbyteReconciler) makeWorkerDeployment(instance *stackv1alpha1.Airbyte, schema *runtime.Scheme) *appsv1.Deployment {
 	labels := instance.GetLabels()
 
-	portVarNames := []int32{9000, 9001, 9002, 9003, 9004, 9005, 9006,
-		9007, 9008, 9010, 9011, 9012, 9013, 9014, 9015, 9016, 9020,
-		9021, 9022, 9023, 9024, 9025, 9026, 9027, 9028, 9030}
+	portVarNames := []int32{9000, 9001, 9002, 9003, 9004, 9005, 9006, 9007, 9008, 9009, 9010,
+		9011, 9012, 9013, 9014, 9015, 9016, 9017, 9018, 9019, 9020,
+		9021, 9022, 9023, 9024, 9025, 9026, 9027, 9028, 9029, 9030}
 
 	var containerPorts []corev1.ContainerPort
 
@@ -413,7 +414,7 @@ func (r *AirbyteReconciler) makeWorkerDeployment(instance *stackv1alpha1.Airbyte
 		Name: "MICRONAUT_ENVIRONMENTS",
 		ValueFrom: &corev1.EnvVarSource{
 			ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-				Key: "CRON_MICRONAUT_ENVIRONMENTS",
+				Key: "WORKERS_MICRONAUT_ENVIRONMENTS",
 				LocalObjectReference: corev1.LocalObjectReference{
 					Name: instance.GetNameWithSuffix("-airbyte-env"),
 				},
@@ -422,8 +423,23 @@ func (r *AirbyteReconciler) makeWorkerDeployment(instance *stackv1alpha1.Airbyte
 	})
 
 	envVars = append(envVars, corev1.EnvVar{
+		Name: "JOB_KUBE_NAMESPACE",
+		ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{
+				FieldPath: "metadata.namespace",
+			},
+		},
+	})
+
+	envVars = append(envVars, corev1.EnvVar{
 		Name:  "WORKSPACE_DOCKER_MOUNT",
 		Value: "workspace",
+	}, corev1.EnvVar{
+		Name:  "LOG_LEVEL",
+		Value: "INFO",
+	}, corev1.EnvVar{
+		Name:  "JOB_KUBE_SERVICEACCOUNT",
+		Value: instance.Spec.Global.ServiceAccountName,
 	})
 
 	envVars = append(envVars, corev1.EnvVar{
@@ -486,11 +502,11 @@ func (r *AirbyteReconciler) makeWorkerDeployment(instance *stackv1alpha1.Airbyte
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
-					//ServiceAccountName: instance.GetNameWithSuffix("-admin"),
-					SecurityContext: instance.Spec.SecurityContext,
+					ServiceAccountName: instance.GetNameWithSuffix("-admin"),
+					SecurityContext:    instance.Spec.SecurityContext,
 					Containers: []corev1.Container{
 						{
-							Name:            instance.Name,
+							Name:            "airbyte-worker-container",
 							Image:           instance.Spec.Worker.Image.Repository + ":" + instance.Spec.Worker.Image.Tag,
 							ImagePullPolicy: instance.Spec.Worker.Image.PullPolicy,
 							Resources:       *instance.Spec.Worker.Resources,
@@ -651,8 +667,8 @@ func (r *AirbyteReconciler) makeAirbyteApiServerDeployment(instance *stackv1alph
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
-					//ServiceAccountName: instance.GetNameWithSuffix("-admin"),
-					SecurityContext: instance.Spec.SecurityContext,
+					ServiceAccountName: instance.GetNameWithSuffix("-admin"),
+					SecurityContext:    instance.Spec.SecurityContext,
 					Containers: []corev1.Container{
 						{
 							Name:            instance.Name,
@@ -782,8 +798,8 @@ func (r *AirbyteReconciler) makeConnectorBuilderServerDeployment(instance *stack
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
-					//ServiceAccountName: instance.GetNameWithSuffix("-admin"),
-					SecurityContext: instance.Spec.SecurityContext,
+					ServiceAccountName: instance.GetNameWithSuffix("-admin"),
+					SecurityContext:    instance.Spec.SecurityContext,
 					Containers: []corev1.Container{
 						{
 							Name:            instance.Name,
@@ -941,8 +957,8 @@ func (r *AirbyteReconciler) makeCronDeployment(instance *stackv1alpha1.Airbyte, 
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
-					//ServiceAccountName: instance.GetNameWithSuffix("-admin"),
-					SecurityContext: instance.Spec.SecurityContext,
+					ServiceAccountName: instance.GetNameWithSuffix("-admin"),
+					SecurityContext:    instance.Spec.SecurityContext,
 					Containers: []corev1.Container{
 						{
 							Name:            "airbyte-cron",
@@ -1011,8 +1027,8 @@ func (r *AirbyteReconciler) makePodSweeperDeployment(instance *stackv1alpha1.Air
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
-					//ServiceAccountName: instance.GetNameWithSuffix("-admin"),
-					SecurityContext: instance.Spec.SecurityContext,
+					ServiceAccountName: instance.GetNameWithSuffix("-admin"),
+					SecurityContext:    instance.Spec.SecurityContext,
 					Containers: []corev1.Container{
 						{
 							Name:            "airbyte-pod-sweeper",
@@ -1129,35 +1145,35 @@ func (r *AirbyteReconciler) makeTemporalDeployment(instance *stackv1alpha1.Airby
 						Name:  "DB_PORT",
 						Value: strconv.Itoa(int(instance.Spec.Global.Database.Port)),
 					})
-				} else if instance.Spec.Global.ConfigMapName != "" {
-					envVars = append(envVars, corev1.EnvVar{
-						Name: "DB_PORT",
-						ValueFrom: &corev1.EnvVarSource{
-							ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: instance.Spec.Global.ConfigMapName,
-								},
-								Key: "DATABASE_PORT",
-							},
-						},
-					})
-				} else {
-					envVars = append(envVars, corev1.EnvVar{
-						Name: "DB_PORT",
-						ValueFrom: &corev1.EnvVarSource{
-							ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: instance.GetNameWithSuffix("-airbyte-env"),
-								},
-								Key: "DATABASE_PORT",
-							},
-						},
-					})
 				}
+			} else if instance.Spec.Global.ConfigMapName != "" {
+				envVars = append(envVars, corev1.EnvVar{
+					Name: "DB_PORT",
+					ValueFrom: &corev1.EnvVarSource{
+						ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: instance.Spec.Global.ConfigMapName,
+							},
+							Key: "DATABASE_PORT",
+						},
+					},
+				})
+			} else {
+				envVars = append(envVars, corev1.EnvVar{
+					Name: "DB_PORT",
+					ValueFrom: &corev1.EnvVarSource{
+						ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: instance.GetNameWithSuffix("-airbyte-env"),
+							},
+							Key: "DATABASE_PORT",
+						},
+					},
+				})
 			}
 
 			envVars = append(envVars, corev1.EnvVar{
-				Name: "DATABASE_USER",
+				Name: "POSTGRES_USER",
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
 						Key: "DATABASE_USER",
@@ -1168,29 +1184,17 @@ func (r *AirbyteReconciler) makeTemporalDeployment(instance *stackv1alpha1.Airby
 				},
 			})
 
-			if instance.Spec.Global.Database != nil {
-				secretName := instance.GetNameWithSuffix("-airbyte-secrets")
-				secretKey := "DATABASE_PASSWORD"
-
-				if instance.Spec.Global.Database.SecretName != "" {
-					secretName = instance.Spec.Global.Database.SecretName
-				}
-				if instance.Spec.Global.Database.SecretValue != "" {
-					secretKey = instance.Spec.Global.Database.SecretValue
-				}
-
-				envVars = append(envVars, corev1.EnvVar{
-					Name: "POSTGRES_PWD",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							Key: secretKey,
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: secretName,
-							},
+			envVars = append(envVars, corev1.EnvVar{
+				Name: "POSTGRES_PWD",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						Key: "DATABASE_PASSWORD",
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: instance.GetNameWithSuffix("-airbyte-secrets"),
 						},
 					},
-				})
-			}
+				},
+			})
 
 			configMapName := instance.GetNameWithSuffix("-airbyte-env")
 			if instance.Spec.Global.ConfigMapName != "" {
@@ -1281,8 +1285,8 @@ func (r *AirbyteReconciler) makeTemporalDeployment(instance *stackv1alpha1.Airby
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
-					//ServiceAccountName: instance.GetNameWithSuffix("-admin"),
-					SecurityContext: instance.Spec.SecurityContext,
+					ServiceAccountName: instance.GetNameWithSuffix("-admin"),
+					SecurityContext:    instance.Spec.SecurityContext,
 					Containers: []corev1.Container{
 						{
 							Name:            instance.Name,
@@ -1294,7 +1298,7 @@ func (r *AirbyteReconciler) makeTemporalDeployment(instance *stackv1alpha1.Airby
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "airbyte-temporal-dynamicconfig",
-									MountPath: "/config/dynamicconfig",
+									MountPath: "/etc/temporal/config/dynamicconfig/",
 								},
 							},
 						},
@@ -1334,7 +1338,8 @@ func (r *AirbyteReconciler) makeTemporalDeployment(instance *stackv1alpha1.Airby
 func (r *AirbyteReconciler) makeWebAppDeployment(instance *stackv1alpha1.Airbyte, schema *runtime.Scheme) *appsv1.Deployment {
 	labels := instance.GetLabels()
 
-	envVarNames := []string{"AIRBYTE_API_HOST", "INTERNAL_API_HOST"}
+	envVarNames := []string{"TRACKING_STRATEGY", "INTERNAL_API_HOST", "KEYCLOAK_INTERNAL_HOST", "CONNECTOR_BUILDER_API_HOST",
+		"AIRBYTE_VERSION", "API_URL", "CONNECTOR_BUILDER_API_URL"}
 	var envVars []corev1.EnvVar
 
 	if instance != nil && instance.Spec.Global != nil {
@@ -1423,8 +1428,8 @@ func (r *AirbyteReconciler) makeWebAppDeployment(instance *stackv1alpha1.Airbyte
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
-					//ServiceAccountName: instance.GetNameWithSuffix("-admin"),
-					SecurityContext: instance.Spec.SecurityContext,
+					ServiceAccountName: "airbyte-admin",
+					//SecurityContext:    instance.Spec.SecurityContext,
 					Containers: []corev1.Container{
 						{
 							Name:            instance.Name,
@@ -1560,7 +1565,7 @@ func (r *AirbyteReconciler) reconcileDeployment(ctx context.Context, instance *s
 func (r *AirbyteReconciler) makeSecret(instance *stackv1alpha1.Airbyte) []*corev1.Secret {
 	var secrets []*corev1.Secret
 	labels := instance.GetLabels()
-	if instance.Spec.Secret.AirbyteSecrets != nil {
+	if instance.Spec.Global != nil && instance.Spec.Global.Logs != nil && instance.Spec.Global.Logs.Gcs != nil {
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      instance.GetNameWithSuffix("-gcs-log-creds"),
@@ -1569,21 +1574,46 @@ func (r *AirbyteReconciler) makeSecret(instance *stackv1alpha1.Airbyte) []*corev
 			},
 			Type: corev1.SecretTypeOpaque,
 			Data: map[string][]byte{
-				"gcp.json": []byte(instance.Spec.Secret.GcsLogCreds["gcp.json"]),
+				"gcp.json": []byte(instance.Spec.Global.Logs.Gcs.CredentialsJson),
 			},
 		}
 		secrets = append(secrets, secret)
 
 	}
 
-	if instance.Spec.Secret.AirbyteSecrets != nil {
+	if instance.Spec.Global != nil && instance.Spec.Global.Logs != nil {
+		// Create a Data map to hold the secret data
 		data := make(map[string][]byte)
-		data["AWS_ACCESS_KEY_ID"] = []byte(instance.Spec.Secret.AirbyteSecrets["AWS_ACCESS_KEY_ID"])
-		data["AWS_SECRET_ACCESS_KEY"] = []byte(instance.Spec.Secret.AirbyteSecrets["AWS_SECRET_ACCESS_KEY"])
-		data["DATABASE_PASSWORD"] = []byte(instance.Spec.Secret.AirbyteSecrets["DATABASE_PASSWORD"])
-		data["DATABASE_USER"] = []byte(instance.Spec.Secret.AirbyteSecrets["DATABASE_USER"])
-		data["STATE_STORAGE_MINIO_ACCESS_KEY"] = []byte(instance.Spec.Secret.AirbyteSecrets["STATE_STORAGE_MINIO_ACCESS_KEY"])
-		data["STATE_STORAGE_MINIO_SECRET_ACCESS_KEY"] = []byte(instance.Spec.Secret.AirbyteSecrets["STATE_STORAGE_MINIO_SECRET_ACCESS_KEY"])
+
+		data["AWS_ACCESS_KEY_ID"] = []byte("")
+		if instance.Spec.Global.Logs.AccessKey != nil {
+			data["AWS_ACCESS_KEY_ID"] = []byte(instance.Spec.Global.Logs.AccessKey.Password)
+		}
+
+		data["AWS_SECRET_ACCESS_KEY"] = []byte("")
+		if instance.Spec.Global.Logs.SecretKey != nil {
+			data["AWS_SECRET_ACCESS_KEY"] = []byte(instance.Spec.Global.Logs.SecretKey.Password)
+		}
+
+		data["DATABASE_PASSWORD"] = []byte("")
+		if instance.Spec.Postgres != nil {
+			data["DATABASE_PASSWORD"] = []byte(instance.Spec.Postgres.Password)
+		}
+
+		data["DATABASE_USER"] = []byte("")
+		if instance.Spec.Postgres != nil {
+			data["DATABASE_USER"] = []byte(instance.Spec.Postgres.UserName)
+		}
+
+		data["STATE_STORAGE_MINIO_ACCESS_KEY"] = []byte("")
+		if instance.Spec.Minio != nil {
+			data["STATE_STORAGE_MINIO_ACCESS_KEY"] = []byte(instance.Spec.Minio.RootUser)
+		}
+
+		data["STATE_STORAGE_MINIO_SECRET_ACCESS_KEY"] = []byte("")
+		if instance.Spec.Minio != nil {
+			data["STATE_STORAGE_MINIO_SECRET_ACCESS_KEY"] = []byte(instance.Spec.Minio.RootPassword)
+		}
 
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
@@ -1837,7 +1867,7 @@ func (r *AirbyteReconciler) makeEnvConfigMap(instance *stackv1alpha1.Airbyte, sc
 		"LOCAL_ROOT":                             "/tmp/airbyte_local",
 		"STATE_STORAGE_MINIO_BUCKET_NAME":        "airbyte-state-storage",
 		"TEMPORAL_HOST":                          instance.Name + "-temporal:" + strconv.FormatInt(int64(instance.Spec.Temporal.Service.Port), 10),
-		"TEMPORAL_WORKER_PORTS":                  "9000-9040",
+		"TEMPORAL_WORKER_PORTS":                  "9001,9002,9003,9004,9005,9006,9007,9008,9009,9010,9011,9012,9013,9014,9015,9016,9017,9018,9019,9020,9021,9022,9023,9024,9025,9026,9027,9028,9029,9030,9031,9032,9033,9034,9035,9036,9037,9038,9039,9040",
 		"TRACKING_STRATEGY":                      "segment",
 		"WORKER_ENVIRONMENT":                     "kubernetes",
 		"WORKSPACE_DOCKER_MOUNT":                 "airbyte_workspace",
@@ -1873,9 +1903,9 @@ func (r *AirbyteReconciler) makeEnvConfigMap(instance *stackv1alpha1.Airbyte, sc
 	data["CONTAINER_ORCHESTRATOR_ENABLED"] = containerOrchestratorEnabled
 
 	logStorageType := ""
-	if instance != nil && instance.Spec.Global != nil && instance.Spec.Global.Log != nil {
-		if instance.Spec.Global.Log.StorageType != "" {
-			logStorageType = instance.Spec.Global.Log.StorageType
+	if instance != nil && instance.Spec.Global != nil && instance.Spec.Global.Logs != nil {
+		if instance.Spec.Global.Logs.StorageType != "" {
+			logStorageType = instance.Spec.Global.Logs.StorageType
 		}
 	}
 	data["WORKER_LOGS_STORAGE_TYPE"] = logStorageType
@@ -1897,33 +1927,33 @@ func (r *AirbyteReconciler) makeEnvConfigMap(instance *stackv1alpha1.Airbyte, sc
 	data["CONNECTOR_BUILDER_API_URL"] = ServerUrl
 
 	gcsBucket := ""
-	if instance != nil && instance.Spec.Global != nil && instance.Spec.Global.Log != nil && instance.Spec.Global.Log.Gcs != nil {
-		if instance.Spec.Global.Log.Gcs.Bucket != "" {
-			gcsBucket = instance.Spec.Global.Log.Gcs.Bucket
+	if instance != nil && instance.Spec.Global != nil && instance.Spec.Global.Logs != nil && instance.Spec.Global.Logs.Gcs != nil {
+		if instance.Spec.Global.Logs.Gcs.Bucket != "" {
+			gcsBucket = instance.Spec.Global.Logs.Gcs.Bucket
 		}
 	}
 	data["GCS_LOG_BUCKET"] = gcsBucket
 
 	gcsCredentials := ""
-	if instance != nil && instance.Spec.Global != nil && instance.Spec.Global.Log != nil && instance.Spec.Global.Log.Gcs != nil {
-		if instance.Spec.Global.Log.Gcs.Credentials != "" {
-			gcsCredentials = instance.Spec.Global.Log.Gcs.Credentials
+	if instance != nil && instance.Spec.Global != nil && instance.Spec.Global.Logs != nil && instance.Spec.Global.Logs.Gcs != nil {
+		if instance.Spec.Global.Logs.Gcs.Credentials != "" {
+			gcsCredentials = instance.Spec.Global.Logs.Gcs.Credentials
 		}
 	}
 	data["GOOGLE_APPLICATION_CREDENTIALS"] = gcsCredentials
 
 	s3Bucket := ""
-	if instance != nil && instance.Spec.Global != nil && instance.Spec.Global.Log != nil && instance.Spec.Global.Log.S3 != nil {
-		if instance.Spec.Global.Log.S3.Bucket != "" {
-			s3Bucket = instance.Spec.Global.Log.S3.Bucket
+	if instance != nil && instance.Spec.Global != nil && instance.Spec.Global.Logs != nil && instance.Spec.Global.Logs.S3 != nil {
+		if instance.Spec.Global.Logs.S3.Bucket != "" {
+			s3Bucket = instance.Spec.Global.Logs.S3.Bucket
 		}
 	}
 	data["S3_LOG_BUCKET"] = s3Bucket
 
 	s3BucketRegion := ""
-	if instance != nil && instance.Spec.Global != nil && instance.Spec.Global.Log != nil && instance.Spec.Global.Log.S3 != nil {
-		if instance.Spec.Global.Log.S3.BucketRegion != "" {
-			s3BucketRegion = instance.Spec.Global.Log.S3.BucketRegion
+	if instance != nil && instance.Spec.Global != nil && instance.Spec.Global.Logs != nil && instance.Spec.Global.Logs.S3 != nil {
+		if instance.Spec.Global.Logs.S3.BucketRegion != "" {
+			s3BucketRegion = instance.Spec.Global.Logs.S3.BucketRegion
 		}
 	}
 	data["S3_LOG_BUCKET_REGION"] = s3BucketRegion
@@ -2018,15 +2048,15 @@ func (r *AirbyteReconciler) makeEnvConfigMap(instance *stackv1alpha1.Airbyte, sc
 
 	s3MinioEndpoint := ""
 	s3PathStyleAccess := false
-	if instance != nil && instance.Spec.Global != nil && instance.Spec.Global.Log != nil {
-		if instance.Spec.Global.Log.Minio != nil && instance.Spec.Global.Log.Minio.Enabled {
+	if instance != nil && instance.Spec.Global != nil && instance.Spec.Global.Logs != nil {
+		if instance.Spec.Global.Logs.Minio != nil && instance.Spec.Global.Logs.Minio.Enabled {
 			s3MinioEndpoint = "http://airbyte-minio-svc:9000"
 			s3PathStyleAccess = true
-		} else if instance.Spec.Global.Log.ExternalMinio != nil {
-			if instance.Spec.Global.Log.ExternalMinio.Endpoint != "" {
-				s3MinioEndpoint = instance.Spec.Global.Log.ExternalMinio.Endpoint
-			} else if instance.Spec.Global.Log.ExternalMinio.Enabled {
-				s3MinioEndpoint = "http://" + instance.Spec.Global.Log.ExternalMinio.Host + ":" + strconv.Itoa(int(instance.Spec.Global.Log.ExternalMinio.Port))
+		} else if instance.Spec.Global.Logs.ExternalMinio != nil {
+			if instance.Spec.Global.Logs.ExternalMinio.Endpoint != "" {
+				s3MinioEndpoint = instance.Spec.Global.Logs.ExternalMinio.Endpoint
+			} else if instance.Spec.Global.Logs.ExternalMinio.Enabled {
+				s3MinioEndpoint = "http://" + instance.Spec.Global.Logs.ExternalMinio.Host + ":" + strconv.Itoa(int(instance.Spec.Global.Logs.ExternalMinio.Port))
 				s3PathStyleAccess = true
 			}
 		}
@@ -2153,6 +2183,111 @@ func (r *AirbyteReconciler) reconcileConfigMap(ctx context.Context, instance *st
 	if temporalDynamicconfigConfigMap != nil {
 		if err := CreateOrUpdate(ctx, r.Client, temporalDynamicconfigConfigMap); err != nil {
 			r.Log.Error(err, "Failed to create or update airbyte-temporal-dynamicconfig configmap")
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *AirbyteReconciler) makeAdminServiceAccount(instance *stackv1alpha1.Airbyte, schema *runtime.Scheme) *corev1.ServiceAccount {
+	labels := instance.GetLabels()
+	serviceAccount := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instance.GetNameWithSuffix("-admin"),
+			Namespace: instance.Namespace,
+			Labels:    labels,
+		},
+	}
+	err := ctrl.SetControllerReference(instance, serviceAccount, schema)
+	if err != nil {
+		r.Log.Error(err, "Failed to set controller reference for serviceaccount")
+		return nil
+	}
+	return serviceAccount
+
+}
+
+func (r *AirbyteReconciler) reconcileServiceAccount(ctx context.Context, instance *stackv1alpha1.Airbyte) error {
+	serviceAccount := r.makeAdminServiceAccount(instance, r.Scheme)
+	if serviceAccount != nil {
+		if err := CreateOrUpdate(ctx, r.Client, serviceAccount); err != nil {
+			r.Log.Error(err, "Failed to create or update serviceaccount")
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *AirbyteReconciler) makeAdminRole(instance *stackv1alpha1.Airbyte, schema *runtime.Scheme) *rbacv1.Role {
+	labels := instance.GetLabels()
+	role := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instance.GetNameWithSuffix("-admin-role"),
+			Namespace: instance.Namespace,
+			Labels:    labels,
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{"*"},
+				Resources: []string{"jobs", "pods", "pods/log", "pods/exec", "pods/attach"},
+				Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+			},
+		},
+	}
+	err := ctrl.SetControllerReference(instance, role, schema)
+	if err != nil {
+		r.Log.Error(err, "Failed to set controller reference for role")
+		return nil
+	}
+	return role
+
+}
+
+func (r *AirbyteReconciler) reconcileRole(ctx context.Context, instance *stackv1alpha1.Airbyte) error {
+	role := r.makeAdminRole(instance, r.Scheme)
+	if role != nil {
+		if err := CreateOrUpdate(ctx, r.Client, role); err != nil {
+			r.Log.Error(err, "Failed to create or update role")
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *AirbyteReconciler) makeAdminRoleBinding(instance *stackv1alpha1.Airbyte, schema *runtime.Scheme) *rbacv1.RoleBinding {
+	labels := instance.GetLabels()
+	roleBinding := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instance.GetNameWithSuffix("-admin-binding"),
+			Namespace: instance.Namespace,
+			Labels:    labels,
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      instance.GetNameWithSuffix("-admin"),
+				Namespace: instance.Namespace,
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			Kind:     "Role",
+			Name:     instance.GetNameWithSuffix("-admin-role"),
+			APIGroup: "",
+		},
+	}
+	err := ctrl.SetControllerReference(instance, roleBinding, schema)
+	if err != nil {
+		r.Log.Error(err, "Failed to set controller reference for rolebinding")
+		return nil
+	}
+	return roleBinding
+}
+
+func (r *AirbyteReconciler) reconcileRoleBinding(ctx context.Context, instance *stackv1alpha1.Airbyte) error {
+	roleBinding := r.makeAdminRoleBinding(instance, r.Scheme)
+	if roleBinding != nil {
+		if err := CreateOrUpdate(ctx, r.Client, roleBinding); err != nil {
+			r.Log.Error(err, "Failed to create or update rolebinding")
 			return err
 		}
 	}

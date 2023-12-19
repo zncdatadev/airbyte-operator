@@ -2047,7 +2047,7 @@ spec:
                         default: airbyte/cron
                         type: string
                       tag:
-                        default: 1.20.1
+                        default: 0.50.30
                         type: string
                     type: object
                   labels:
@@ -2227,8 +2227,20 @@ spec:
                             type: object
                         type: object
                     type: object
-                  log:
+                  logs:
                     properties:
+                      accessKey:
+                        properties:
+                          existingSecret:
+                            default: ""
+                            type: string
+                          existingSecretKey:
+                            default: ""
+                            type: string
+                          password:
+                            default: ""
+                            type: string
+                        type: object
                       externalMinio:
                         properties:
                           enabled:
@@ -2253,6 +2265,9 @@ spec:
                           credentials:
                             default: ""
                             type: string
+                          credentialsJson:
+                            default: ""
+                            type: string
                         type: object
                       minio:
                         properties:
@@ -2273,6 +2288,18 @@ spec:
                             type: boolean
                         required:
                         - enabled
+                        type: object
+                      secretKey:
+                        properties:
+                          existingSecret:
+                            default: ""
+                            type: string
+                          existingSecretKey:
+                            default: ""
+                            type: string
+                          password:
+                            default: ""
+                            type: string
                         type: object
                       storageType:
                         default: MINIO
@@ -2759,6 +2786,15 @@ spec:
                 required:
                 - enabled
                 - image
+                type: object
+              minio:
+                properties:
+                  rootPassword:
+                    default: minio123
+                    type: string
+                  rootUser:
+                    default: minio
+                    type: string
                 type: object
               podSweeper:
                 properties:
@@ -3291,17 +3327,6 @@ spec:
                     default: airbyte
                     type: string
                 type: object
-              secret:
-                properties:
-                  airbyte-secrets:
-                    additionalProperties:
-                      type: string
-                    type: object
-                  gcs-log-creds:
-                    additionalProperties:
-                      type: string
-                    type: object
-                type: object
               securityContext:
                 properties:
                   fsGroup:
@@ -3796,15 +3821,8 @@ spec:
                         type: object
                     type: object
                   secret:
-                    properties:
-                      airbyte-secrets:
-                        additionalProperties:
-                          type: string
-                        type: object
-                      gcs-log-creds:
-                        additionalProperties:
-                          type: string
-                        type: object
+                    additionalProperties:
+                      type: string
                     type: object
                   service:
                     properties:

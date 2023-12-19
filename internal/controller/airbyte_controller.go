@@ -104,6 +104,21 @@ func (r *AirbyteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
+	if err := r.reconcileServiceAccount(ctx, airbyte); err != nil {
+		r.Log.Error(err, "unable to reconcile ServiceAccount")
+		return ctrl.Result{}, err
+	}
+
+	if err := r.reconcileRole(ctx, airbyte); err != nil {
+		r.Log.Error(err, "unable to reconcile Role")
+		return ctrl.Result{}, err
+	}
+
+	if err := r.reconcileRoleBinding(ctx, airbyte); err != nil {
+		r.Log.Error(err, "unable to reconcile RoleBinding")
+		return ctrl.Result{}, err
+	}
+
 	airbyte.SetStatusCondition(metav1.Condition{
 		Type:               stackv1alpha1.ConditionTypeAvailable,
 		Status:             metav1.ConditionTrue,

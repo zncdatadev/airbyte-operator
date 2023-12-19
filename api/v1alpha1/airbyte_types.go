@@ -31,13 +31,13 @@ type AirbyteSpec struct {
 	SecurityContext *corev1.PodSecurityContext `json:"securityContext"`
 
 	// +kubebuilder:validation:Optional
-	Secret SecretParam `json:"secret"`
-
-	// +kubebuilder:validation:Optional
 	Global *GlobalSpec `json:"global"`
 
 	// +kubebuilder:validation:Optional
 	Postgres *PostgresSpec `json:"postgres"`
+
+	// +kubebuilder:validation:Optional
+	Minio *MinioSpec `json:"minio"`
 
 	// +kubebuilder:validation:Optional
 	Server *ServerSpec `json:"server"`
@@ -70,6 +70,16 @@ type AirbyteSpec struct {
 	Cron *CronSpec `json:"cron"`
 }
 
+type MinioSpec struct {
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default="minio"
+	RootUser string `json:"rootUser"`
+
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default="minio123"
+	RootPassword string `json:"rootPassword"`
+}
+
 type GlobalSpec struct {
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default="airbyte-admin"
@@ -95,7 +105,7 @@ type GlobalSpec struct {
 	StateStorageType string `json:"stateStorageType"`
 
 	// +kubebuilder:validation:Optional
-	Log *GlobalLogSpec `json:"log"`
+	Logs *GlobalLogsSpec `json:"logs"`
 
 	// +kubebuilder:validation:Optional
 	Metrics *GlobalMetricsSpec `json:"metrics"`
@@ -169,7 +179,13 @@ type GlobalJobsKubeImagesSpec struct {
 	Curl string `json:"curl"`
 }
 
-type GlobalLogSpec struct {
+type GlobalLogsSpec struct {
+	// +kubebuilder:validation:Optional
+	AccessKey *GlobalLogsAccessKeySpec `json:"accessKey"`
+
+	// +kubebuilder:validation:Optional
+	SecretKey *GlobalLogsSecretKeySpec `json:"secretKey"`
+
 	// +kubebuilder:validation:Optional
 	Minio *GlobalLogMinioSpec `json:"minio"`
 
@@ -185,6 +201,34 @@ type GlobalLogSpec struct {
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default="MINIO"
 	StorageType string `json:"storageType"`
+}
+
+type GlobalLogsAccessKeySpec struct {
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=""
+	Password string `json:"password"`
+
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=""
+	ExistingSecret string `json:"existingSecret"`
+
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=""
+	ExistingSecretKey string `json:"existingSecretKey"`
+}
+
+type GlobalLogsSecretKeySpec struct {
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=""
+	Password string `json:"password"`
+
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=""
+	ExistingSecret string `json:"existingSecret"`
+
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=""
+	ExistingSecretKey string `json:"existingSecretKey"`
 }
 
 type GlobalMetricsSpec struct {
@@ -242,6 +286,9 @@ type GlobalLogGcsSpec struct {
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=""
 	Credentials string `json:"credentials"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=""
+	CredentialsJson string `json:"credentialsJson"`
 }
 
 type PostgresSpec struct {
@@ -293,7 +340,8 @@ type ServerSpec struct {
 	Affinity *corev1.Affinity `json:"affinity"`
 
 	// +kubebuilder:validation:Optional
-	Secret SecretParam `json:"secret,omitempty"`
+	// +kubebuilder:default={}
+	Secret map[string]string `json:"secret"`
 
 	// +kubebuilder:validation:Optional
 	Service *ServerServiceSpec `json:"service"`
@@ -1071,15 +1119,6 @@ type ConnectorBuilderServerDebugSpec struct {
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=5005
 	RemoteDebugPort int32 `json:"RemoteDebugPort"`
-}
-
-type SecretParam struct {
-	AirbyteSecrets map[string]string `json:"airbyte-secrets,omitempty"`
-	GcsLogCreds    map[string]string `json:"gcs-log-creds,omitempty"`
-	// airbyte-secrets
-	// Suffix    string            `json:"suffix,omitempty"`
-	// GcpJson   string            `json:"gcpJson,omitempty"`
-	// SecretMap map[string]string `json:"secretMap,omitempty"`
 }
 
 // SetStatusCondition updates the status condition using the provided arguments.
