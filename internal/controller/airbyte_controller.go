@@ -18,19 +18,15 @@ package controller
 
 import (
 	"context"
-	"reflect"
-
 	"github.com/go-logr/logr"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/util/retry"
 
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
-
+	stackv1alpha1 "github.com/zncdata-labs/airbyte-operator/api/v1alpha1"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	stackv1alpha1 "github.com/zncdata-labs/airbyte-operator/api/v1alpha1"
 )
 
 // AirbyteReconciler reconciles a Airbyte object
@@ -61,99 +57,105 @@ type AirbyteReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
 func (r *AirbyteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
 
-	logger.Info("Reconciling instance")
+	r.Log.Info("Reconciling instance")
 
 	airbyte := &stackv1alpha1.Airbyte{}
+
 	if err := r.Get(ctx, req.NamespacedName, airbyte); err != nil {
 		if client.IgnoreNotFound(err) != nil {
-			logger.Error(err, "unable to fetch instance")
+			r.Log.Error(err, "unable to fetch Airbyte")
 			return ctrl.Result{}, err
 		}
-		logger.Info("Instance deleted")
+		r.Log.Info("Airbyte resource not found. Ignoring since object must be deleted")
 		return ctrl.Result{}, nil
 	}
-	print(airbyte.Spec.Replicas)
 
-	logger.Info("Instance found", "Name", airbyte.Name)
+	// Get the status condition, if it exists and its generation is not the
+	//same as the Airbyte's generation, reset the status conditions
+	readCondition := apimeta.FindStatusCondition(airbyte.Status.Conditions, stackv1alpha1.ConditionTypeProgressing)
+	if readCondition == nil || readCondition.ObservedGeneration != airbyte.GetGeneration() {
+		airbyte.InitStatusConditions()
 
-	if len(airbyte.Status.Conditions) == 0 {
-		airbyte.Status.Nodes = []string{}
-		airbyte.Status.Conditions = append(airbyte.Status.Conditions, corev1.ComponentCondition{
-			Type:   corev1.ComponentHealthy,
-			Status: corev1.ConditionFalse,
-		})
-		err := r.Status().Update(ctx, airbyte)
-		if err != nil {
-			logger.Error(err, "unable to update instance status")
+		if err := r.UpdateStatus(ctx, airbyte); err != nil {
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{Requeue: true}, nil
-	} else if airbyte.Status.Conditions[0].Status == corev1.ConditionTrue {
-		airbyte.Status.Conditions[0].Status = corev1.ConditionFalse
-		err := r.Status().Update(ctx, airbyte)
-		if err != nil {
-			logger.Error(err, "unable to update instance status")
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{Requeue: true}, nil
 	}
 
-	if err := r.reconcilePVC(ctx, airbyte); err != nil {
-		logger.Error(err, "unable to reconcile PVC")
-		return ctrl.Result{}, err
-	}
+	r.Log.Info("Airbyte found", "Name", airbyte.Name)
 
 	if err := r.reconcileDeployment(ctx, airbyte); err != nil {
-		logger.Error(err, "unable to reconcile Deployment")
+		r.Log.Error(err, "unable to reconcile Deployment")
 		return ctrl.Result{}, err
 	}
 
 	if err := r.reconcileService(ctx, airbyte); err != nil {
-		logger.Error(err, "unable to reconcile Service")
+		r.Log.Error(err, "unable to reconcile Service")
 		return ctrl.Result{}, err
 	}
 
 	if err := r.reconcileSecret(ctx, airbyte); err != nil {
-		logger.Error(err, "unable to reconcile Secret")
+		r.Log.Error(err, "unable to reconcile Secret")
 		return ctrl.Result{}, err
 	}
 
 	if err := r.reconcileConfigMap(ctx, airbyte); err != nil {
-		logger.Error(err, "unable to reconcile ConfigMap")
+		r.Log.Error(err, "unable to reconcile ConfigMap")
 		return ctrl.Result{}, err
 	}
 
-	podList := &corev1.PodList{}
-	if err := r.List(ctx, podList, &client.ListOptions{Namespace: airbyte.Namespace, LabelSelector: labels.SelectorFromSet(airbyte.GetLabels())}); err != nil {
-		logger.Error(err, "unable to list pods")
+	if err := r.reconcileServiceAccount(ctx, airbyte); err != nil {
+		r.Log.Error(err, "unable to reconcile ServiceAccount")
 		return ctrl.Result{}, err
 	}
 
-	podNames := getPodNames(podList.Items)
-
-	if !reflect.DeepEqual(podNames, airbyte.Status.Nodes) {
-		logger.Info("Updating instance status", "nodes", podNames)
-		airbyte.Status.Nodes = podNames
-		airbyte.Status.Conditions[0].Status = corev1.ConditionTrue
-		err := r.Status().Update(ctx, airbyte)
-		if err != nil {
-			logger.Error(err, "unable to update instance status")
-			return ctrl.Result{}, err
-		}
+	if err := r.reconcileRole(ctx, airbyte); err != nil {
+		r.Log.Error(err, "unable to reconcile Role")
+		return ctrl.Result{}, err
 	}
 
+	if err := r.reconcileRoleBinding(ctx, airbyte); err != nil {
+		r.Log.Error(err, "unable to reconcile RoleBinding")
+		return ctrl.Result{}, err
+	}
+
+	if err := r.reconcileIngress(ctx, airbyte); err != nil {
+		r.Log.Error(err, "unable to reconcile Ingress")
+		return ctrl.Result{}, err
+	}
+
+	airbyte.SetStatusCondition(metav1.Condition{
+		Type:               stackv1alpha1.ConditionTypeAvailable,
+		Status:             metav1.ConditionTrue,
+		Reason:             stackv1alpha1.ConditionReasonRunning,
+		Message:            "Airbyte is running",
+		ObservedGeneration: airbyte.GetGeneration(),
+	})
+
+	if err := r.UpdateStatus(ctx, airbyte); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	r.Log.Info("Successfully reconciled Airbyte")
 	return ctrl.Result{}, nil
 
 }
 
-func getPodNames(pods []corev1.Pod) []string {
-	var podNames []string
-	for _, pod := range pods {
-		podNames = append(podNames, pod.Name)
+// UpdateStatus updates the status of the Airbyte resource
+// https://stackoverflow.com/questions/76388004/k8s-controller-update-status-and-condition
+func (r *AirbyteReconciler) UpdateStatus(ctx context.Context, instance *stackv1alpha1.Airbyte) error {
+	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		return r.Status().Update(ctx, instance)
+		//return r.Status().Patch(ctx, instance, client.MergeFrom(instance))
+	})
+
+	if retryErr != nil {
+		r.Log.Error(retryErr, "Failed to update vfm status after retries")
+		return retryErr
 	}
-	return podNames
+
+	r.Log.V(1).Info("Successfully patched object status")
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
