@@ -274,43 +274,53 @@ func (r *AirbyteReconciler) reconcileService(ctx context.Context, instance *stac
 		return nil
 	}
 
-	serverService := r.makeServerService(instance, r.Scheme)
-	if serverService != nil {
-		if err := CreateOrUpdate(ctx, r.Client, serverService); err != nil {
-			r.Log.Error(err, "Failed to create or update service")
-			return err
+	if instance.Spec.Server.Enabled {
+		serverService := r.makeServerService(instance, r.Scheme)
+		if serverService != nil {
+			if err := CreateOrUpdate(ctx, r.Client, serverService); err != nil {
+				r.Log.Error(err, "Failed to create or update service")
+				return err
+			}
 		}
 	}
 
-	airbyteApiServerService := r.makeAirbyteApiServerService(instance, r.Scheme)
-	if airbyteApiServerService != nil {
-		if err := CreateOrUpdate(ctx, r.Client, airbyteApiServerService); err != nil {
-			r.Log.Error(err, "Failed to create or update airbyteApiServer service")
-			return err
+	if instance.Spec.AirbyteApiServer.Enabled {
+		airbyteApiServerService := r.makeAirbyteApiServerService(instance, r.Scheme)
+		if airbyteApiServerService != nil {
+			if err := CreateOrUpdate(ctx, r.Client, airbyteApiServerService); err != nil {
+				r.Log.Error(err, "Failed to create or update airbyteApiServer service")
+				return err
+			}
 		}
 	}
 
-	connectorBuilderServerService := r.makeConnectorBuilderServerService(instance, r.Scheme)
-	if connectorBuilderServerService != nil {
-		if err := CreateOrUpdate(ctx, r.Client, connectorBuilderServerService); err != nil {
-			r.Log.Error(err, "Failed to create or update connectorBuilderServerService service")
-			return err
+	if instance.Spec.ConnectorBuilderServer.Enabled {
+		connectorBuilderServerService := r.makeConnectorBuilderServerService(instance, r.Scheme)
+		if connectorBuilderServerService != nil {
+			if err := CreateOrUpdate(ctx, r.Client, connectorBuilderServerService); err != nil {
+				r.Log.Error(err, "Failed to create or update connectorBuilderServerService service")
+				return err
+			}
 		}
 	}
 
-	temporalService := r.makeTemporalService(instance, r.Scheme)
-	if temporalService != nil {
-		if err := CreateOrUpdate(ctx, r.Client, temporalService); err != nil {
-			r.Log.Error(err, "Failed to create or update temporalService service")
-			return err
+	if instance.Spec.Temporal.Enabled {
+		temporalService := r.makeTemporalService(instance, r.Scheme)
+		if temporalService != nil {
+			if err := CreateOrUpdate(ctx, r.Client, temporalService); err != nil {
+				r.Log.Error(err, "Failed to create or update temporalService service")
+				return err
+			}
 		}
 	}
 
-	webAppService := r.makeWebAppService(instance, r.Scheme)
-	if webAppService != nil {
-		if err := CreateOrUpdate(ctx, r.Client, webAppService); err != nil {
-			r.Log.Error(err, "Failed to create or update webAppService service")
-			return err
+	if instance.Spec.WebApp.Enabled {
+		webAppService := r.makeWebAppService(instance, r.Scheme)
+		if webAppService != nil {
+			if err := CreateOrUpdate(ctx, r.Client, webAppService); err != nil {
+				r.Log.Error(err, "Failed to create or update webAppService service")
+				return err
+			}
 		}
 	}
 	return nil
@@ -1578,67 +1588,83 @@ func (r *AirbyteReconciler) reconcileDeployment(ctx context.Context, instance *s
 		return nil
 	}
 
-	serverDeployment := r.makeServerDeployment(instance, r.Scheme)
-	if serverDeployment != nil {
-		if err := CreateOrUpdate(ctx, r.Client, serverDeployment); err != nil {
-			r.Log.Error(err, "Failed to create or update Serverdeployment")
-			return err
+	if instance.Spec.Server.Enabled {
+		serverDeployment := r.makeServerDeployment(instance, r.Scheme)
+		if serverDeployment != nil {
+			if err := CreateOrUpdate(ctx, r.Client, serverDeployment); err != nil {
+				r.Log.Error(err, "Failed to create or update Serverdeployment")
+				return err
+			}
 		}
 	}
 
-	workerDeployment := r.makeWorkerDeployment(instance, r.Scheme)
-	if workerDeployment != nil {
-		if err := CreateOrUpdate(ctx, r.Client, workerDeployment); err != nil {
-			r.Log.Error(err, "Failed to create or update Workerdeployment")
-			return err
+	if instance.Spec.Worker.Enabled {
+		workerDeployment := r.makeWorkerDeployment(instance, r.Scheme)
+		if workerDeployment != nil {
+			if err := CreateOrUpdate(ctx, r.Client, workerDeployment); err != nil {
+				r.Log.Error(err, "Failed to create or update Workerdeployment")
+				return err
+			}
 		}
 	}
 
-	airbyteApiServerDeployment := r.makeAirbyteApiServerDeployment(instance, r.Scheme)
-	if airbyteApiServerDeployment != nil {
-		if err := CreateOrUpdate(ctx, r.Client, airbyteApiServerDeployment); err != nil {
-			r.Log.Error(err, "Failed to create or update AirbyteApiServer")
-			return err
+	if instance.Spec.AirbyteApiServer.Enabled {
+		airbyteApiServerDeployment := r.makeAirbyteApiServerDeployment(instance, r.Scheme)
+		if airbyteApiServerDeployment != nil {
+			if err := CreateOrUpdate(ctx, r.Client, airbyteApiServerDeployment); err != nil {
+				r.Log.Error(err, "Failed to create or update AirbyteApiServer")
+				return err
+			}
 		}
 	}
 
-	connectorBuilderServerDeployment := r.makeConnectorBuilderServerDeployment(instance, r.Scheme)
-	if connectorBuilderServerDeployment != nil {
-		if err := CreateOrUpdate(ctx, r.Client, connectorBuilderServerDeployment); err != nil {
-			r.Log.Error(err, "Failed to create or update ConnectorBuilderServerDeployment")
-			return err
+	if instance.Spec.ConnectorBuilderServer.Enabled {
+		connectorBuilderServerDeployment := r.makeConnectorBuilderServerDeployment(instance, r.Scheme)
+		if connectorBuilderServerDeployment != nil {
+			if err := CreateOrUpdate(ctx, r.Client, connectorBuilderServerDeployment); err != nil {
+				r.Log.Error(err, "Failed to create or update ConnectorBuilderServerDeployment")
+				return err
+			}
 		}
 	}
 
-	cronDeployment := r.makeCronDeployment(instance, r.Scheme)
-	if cronDeployment != nil {
-		if err := CreateOrUpdate(ctx, r.Client, cronDeployment); err != nil {
-			r.Log.Error(err, "Failed to create or update cronDeployment")
-			return err
+	if instance.Spec.Cron.Enabled {
+		cronDeployment := r.makeCronDeployment(instance, r.Scheme)
+		if cronDeployment != nil {
+			if err := CreateOrUpdate(ctx, r.Client, cronDeployment); err != nil {
+				r.Log.Error(err, "Failed to create or update cronDeployment")
+				return err
+			}
 		}
 	}
 
-	podSweeperDeployment := r.makePodSweeperDeployment(instance, r.Scheme)
-	if podSweeperDeployment != nil {
-		if err := CreateOrUpdate(ctx, r.Client, podSweeperDeployment); err != nil {
-			r.Log.Error(err, "Failed to create or update podSweeperDeployment")
-			return err
+	if instance.Spec.PodSweeper.Enabled {
+		podSweeperDeployment := r.makePodSweeperDeployment(instance, r.Scheme)
+		if podSweeperDeployment != nil {
+			if err := CreateOrUpdate(ctx, r.Client, podSweeperDeployment); err != nil {
+				r.Log.Error(err, "Failed to create or update podSweeperDeployment")
+				return err
+			}
 		}
 	}
 
-	temporalDeployment := r.makeTemporalDeployment(instance, r.Scheme)
-	if temporalDeployment != nil {
-		if err := CreateOrUpdate(ctx, r.Client, temporalDeployment); err != nil {
-			r.Log.Error(err, "Failed to create or update temporalDeployment")
-			return err
+	if instance.Spec.Temporal.Enabled {
+		temporalDeployment := r.makeTemporalDeployment(instance, r.Scheme)
+		if temporalDeployment != nil {
+			if err := CreateOrUpdate(ctx, r.Client, temporalDeployment); err != nil {
+				r.Log.Error(err, "Failed to create or update temporalDeployment")
+				return err
+			}
 		}
 	}
 
-	webAppDeployment := r.makeWebAppDeployment(instance, r.Scheme)
-	if webAppDeployment != nil {
-		if err := CreateOrUpdate(ctx, r.Client, webAppDeployment); err != nil {
-			r.Log.Error(err, "Failed to create or update webAppDeployment")
-			return err
+	if instance.Spec.WebApp.Enabled {
+		webAppDeployment := r.makeWebAppDeployment(instance, r.Scheme)
+		if webAppDeployment != nil {
+			if err := CreateOrUpdate(ctx, r.Client, webAppDeployment); err != nil {
+				r.Log.Error(err, "Failed to create or update webAppDeployment")
+				return err
+			}
 		}
 	}
 	return nil
@@ -2253,19 +2279,23 @@ func (r *AirbyteReconciler) reconcileConfigMap(ctx context.Context, instance *st
 		}
 	}
 
-	sweepPodScriptConfigMap := r.makeSweepPodScriptConfigMap(instance, r.Scheme)
-	if sweepPodScriptConfigMap != nil {
-		if err := CreateOrUpdate(ctx, r.Client, sweepPodScriptConfigMap); err != nil {
-			r.Log.Error(err, "Failed to create or update airbyte-sweep-pod-script configmap")
-			return err
+	if instance.Spec.PodSweeper.Enabled {
+		sweepPodScriptConfigMap := r.makeSweepPodScriptConfigMap(instance, r.Scheme)
+		if sweepPodScriptConfigMap != nil {
+			if err := CreateOrUpdate(ctx, r.Client, sweepPodScriptConfigMap); err != nil {
+				r.Log.Error(err, "Failed to create or update airbyte-sweep-pod-script configmap")
+				return err
+			}
 		}
 	}
 
-	temporalDynamicconfigConfigMap := r.makeTemporalDynamicconfigConfigMap(instance, r.Scheme)
-	if temporalDynamicconfigConfigMap != nil {
-		if err := CreateOrUpdate(ctx, r.Client, temporalDynamicconfigConfigMap); err != nil {
-			r.Log.Error(err, "Failed to create or update airbyte-temporal-dynamicconfig configmap")
-			return err
+	if instance.Spec.Temporal.Enabled {
+		temporalDynamicconfigConfigMap := r.makeTemporalDynamicconfigConfigMap(instance, r.Scheme)
+		if temporalDynamicconfigConfigMap != nil {
+			if err := CreateOrUpdate(ctx, r.Client, temporalDynamicconfigConfigMap); err != nil {
+				r.Log.Error(err, "Failed to create or update airbyte-temporal-dynamicconfig configmap")
+				return err
+			}
 		}
 	}
 	return nil
