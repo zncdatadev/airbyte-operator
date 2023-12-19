@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -485,6 +486,9 @@ type WebAppSpec struct {
 
 	// +kubebuilder:validation:Optional
 	Labels map[string]string `json:"labels"`
+
+	// +kubebuilder:validation:Required
+	Ingress *WebAppIngressSpec `json:"ingress"`
 
 	// +kubebuilder:validation:Optional
 	NodeSelector map[string]string `json:"nodeSelector"`
@@ -1121,6 +1125,19 @@ type ConnectorBuilderServerDebugSpec struct {
 	RemoteDebugPort int32 `json:"RemoteDebugPort"`
 }
 
+type WebAppIngressSpec struct {
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:=true
+	Enabled bool `json:"enabled,omitempty"`
+	// +kubebuilder:validation:Optional
+	TLS *networkingv1.IngressTLS `json:"tls,omitempty"`
+	// +kubebuilder:validation:Optional
+	Annotations map[string]string `json:"annotations,omitempty"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:="webapp.example.com"
+	Host string `json:"host,omitempty"`
+}
+
 // SetStatusCondition updates the status condition using the provided arguments.
 // If the condition already exists, it updates the condition; otherwise, it appends the condition.
 // If the condition status has changed, it updates the condition's LastTransitionTime.
@@ -1165,6 +1182,13 @@ func (r *Airbyte) InitStatusConditions() {
 type AirbyteStatus struct {
 	// +kubebuilder:validation:Optional
 	Conditions []metav1.Condition `json:"condition,omitempty"`
+	// +kubebuilder:validation:Optional
+	URLs []StatusURL `json:"urls,omitempty"`
+}
+
+type StatusURL struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
 }
 
 //+kubebuilder:object:root=true

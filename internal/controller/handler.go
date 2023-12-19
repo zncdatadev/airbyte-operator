@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	v1 "k8s.io/api/networking/v1"
 	"strconv"
 	"strings"
 
@@ -18,6 +19,87 @@ import (
 
 	stackv1alpha1 "github.com/zncdata-labs/airbyte-operator/api/v1alpha1"
 )
+
+func (r *AirbyteReconciler) makeIngress(instance *stackv1alpha1.Airbyte, schema *runtime.Scheme) *v1.Ingress {
+	labels := instance.GetLabels()
+
+	pt := v1.PathTypeImplementationSpecific
+
+	ing := &v1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instance.Name,
+			Namespace: instance.Namespace,
+			Labels:    labels,
+		},
+		Spec: v1.IngressSpec{
+			Rules: []v1.IngressRule{
+				{
+					Host: instance.Spec.WebApp.Ingress.Host,
+					IngressRuleValue: v1.IngressRuleValue{
+						HTTP: &v1.HTTPIngressRuleValue{
+							Paths: []v1.HTTPIngressPath{
+								{
+									Path:     "/",
+									PathType: &pt,
+									Backend: v1.IngressBackend{
+										Service: &v1.IngressServiceBackend{
+											Name: instance.GetName(),
+											Port: v1.ServiceBackendPort{
+												Number: instance.Spec.WebApp.Service.Port,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	err := ctrl.SetControllerReference(instance, ing, schema)
+	if err != nil {
+		r.Log.Error(err, "Failed to set controller reference for ingress")
+		return nil
+	}
+	return ing
+}
+
+func (r *AirbyteReconciler) reconcileIngress(ctx context.Context, instance *stackv1alpha1.Airbyte) error {
+	obj := r.makeIngress(instance, r.Scheme)
+	if obj == nil {
+		return nil
+	}
+
+	if err := CreateOrUpdate(ctx, r.Client, obj); err != nil {
+		r.Log.Error(err, "Failed to create or update ingress")
+		return err
+	}
+
+	if instance.Spec.WebApp.Ingress.Enabled {
+		url := fmt.Sprintf("http://%s", instance.Spec.WebApp.Ingress.Host)
+		if instance.Status.URLs == nil {
+			instance.Status.URLs = []stackv1alpha1.StatusURL{
+				{
+					Name: "webui",
+					URL:  url,
+				},
+			}
+			if err := r.UpdateStatus(ctx, instance); err != nil {
+				return err
+			}
+
+		} else if instance.Spec.WebApp.Ingress.Host != instance.Status.URLs[0].Name {
+			instance.Status.URLs[0].URL = url
+			if err := r.UpdateStatus(ctx, instance); err != nil {
+				return err
+			}
+
+		}
+	}
+
+	return nil
+}
 
 // make service
 func (r *AirbyteReconciler) makeServerService(instance *stackv1alpha1.Airbyte, schema *runtime.Scheme) *corev1.Service {

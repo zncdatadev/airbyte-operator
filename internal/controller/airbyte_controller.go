@@ -119,6 +119,11 @@ func (r *AirbyteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
+	if err := r.reconcileIngress(ctx, airbyte); err != nil {
+		r.Log.Error(err, "unable to reconcile Ingress")
+		return ctrl.Result{}, err
+	}
+
 	airbyte.SetStatusCondition(metav1.Condition{
 		Type:               stackv1alpha1.ConditionTypeAvailable,
 		Status:             metav1.ConditionTrue,

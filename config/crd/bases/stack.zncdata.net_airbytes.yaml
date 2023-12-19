@@ -4853,6 +4853,29 @@ spec:
                         default: 0.50.30
                         type: string
                     type: object
+                  ingress:
+                    properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        type: object
+                      enabled:
+                        default: true
+                        type: boolean
+                      host:
+                        default: webapp.example.com
+                        type: string
+                      tls:
+                        properties:
+                          hosts:
+                            items:
+                              type: string
+                            type: array
+                            x-kubernetes-list-type: atomic
+                          secretName:
+                            type: string
+                        type: object
+                    type: object
                   labels:
                     additionalProperties:
                       type: string
@@ -4939,6 +4962,7 @@ spec:
                 required:
                 - enabled
                 - image
+                - ingress
                 type: object
               worker:
                 properties:
@@ -5454,6 +5478,18 @@ spec:
                   - reason
                   - status
                   - type
+                  type: object
+                type: array
+              urls:
+                items:
+                  properties:
+                    name:
+                      type: string
+                    url:
+                      type: string
+                  required:
+                  - name
+                  - url
                   type: object
                 type: array
             type: object

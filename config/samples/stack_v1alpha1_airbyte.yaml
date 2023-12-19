@@ -124,6 +124,8 @@ spec:
       requests:
         cpu: 100m
         memory: 512Mi
+    ingress:
+      enabled: false
   cron:
     enabled: true
     replicas: 1
