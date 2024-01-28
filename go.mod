@@ -2,8 +2,6 @@ module github.com/zncdata-labs/airbyte-operator
 
 go 1.21
 
-toolchain go1.21.1
-
 require (
 	github.com/onsi/ginkgo/v2 v2.13.0
 	github.com/onsi/gomega v1.29.0
