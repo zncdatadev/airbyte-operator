@@ -1,23 +1,87 @@
 package controller
 
 import (
+	"context"
 	stackv1alpha1 "github.com/zncdata-labs/airbyte-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (r *AirbyteReconciler) makeCronDeployment(instance *stackv1alpha1.Airbyte, schema *runtime.Scheme) *appsv1.Deployment {
-	labels := instance.GetLabels()
+// reconcile Cron deployment
+func (r *AirbyteReconciler) reconcileCronDeployment(ctx context.Context, instance *stackv1alpha1.Airbyte) error {
+	roleGroups := convertRoleGroupToRoleConfigObject(instance, Cron)
+	reconcileParams := r.createReconcileParams(ctx, roleGroups, instance, r.extractCronDeployment)
+	if err := reconcileParams.createOrUpdateResource(); err != nil {
+		return err
+	}
+	return nil
+}
 
+// extract Cron deployment for role group
+func (r *AirbyteReconciler) extractCronDeployment(params ExtractorParams) (client.Object, error) {
+	instance := params.instance.(*stackv1alpha1.Airbyte)
+	server := instance.Spec.ApiServer
+	groupCfg := params.roleGroup
+	roleCfg := server.RoleConfig
+	clusterCfg := params.cluster
+	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg)
+	schema := params.scheme
+
+	image, securityContext, replicas, resources, _ := getDeploymentInfo(groupCfg, roleCfg, clusterCfg)
+	envVars := r.mergeCronEnvVars(instance, params.roleGroupName)
+
+	dep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      createNameForRoleGroup(instance, "cron", params.roleGroupName),
+			Namespace: instance.Namespace,
+			Labels:    mergedLabels,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: mergedLabels,
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: mergedLabels,
+				},
+				Spec: corev1.PodSpec{
+					ServiceAccountName: createNameForRoleGroup(instance, "admin", ""),
+					SecurityContext:    securityContext,
+					Containers: []corev1.Container{
+						{
+							Name:            "airbyte-cron",
+							Image:           image.Repository + ":" + image.Tag,
+							ImagePullPolicy: image.PullPolicy,
+							Resources:       *resources,
+							Env:             envVars,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	CronScheduler(instance, dep, groupCfg)
+
+	err := ctrl.SetControllerReference(instance, dep, schema)
+	if err != nil {
+		r.Log.Error(err, "Failed to set controller reference for deployment")
+		return nil, err
+	}
+	return dep, nil
+}
+
+// merge env var for cron deployment
+func (r *AirbyteReconciler) mergeCronEnvVars(instance *stackv1alpha1.Airbyte, groupName string) []corev1.EnvVar {
 	envVarNames := []string{"AIRBYTE_VERSION", "CONFIGS_DATABASE_MINIMUM_FLYWAY_MIGRATION_VERSION", "DATABASE_URL",
 		"TEMPORAL_HOST", "TRACKING_STRATEGY", "WORKFLOW_FAILURE_RESTART_DELAY_SECONDS", "WORKSPACE_DOCKER_MOUNT", "WORKSPACE_ROOT"}
 	var envVars []corev1.EnvVar
-
-	if instance != nil && instance.Spec.Global != nil {
-		if instance.Spec.Global.DeploymentMode == "oss" {
+	if instance != nil && instance.Spec.ClusterConfig != nil {
+		if instance.Spec.ClusterConfig.DeploymentMode == "oss" {
 			for _, envVarName := range envVarNames {
 				envVar := corev1.EnvVar{
 					Name: envVarName,
@@ -25,7 +89,7 @@ func (r *AirbyteReconciler) makeCronDeployment(instance *stackv1alpha1.Airbyte, 
 						ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 							Key: envVarName,
 							LocalObjectReference: corev1.LocalObjectReference{
-								Name: instance.GetNameWithSuffix("-airbyte-env"),
+								Name: createNameForRoleGroup(instance, "env", ""),
 							},
 						},
 					},
@@ -39,7 +103,7 @@ func (r *AirbyteReconciler) makeCronDeployment(instance *stackv1alpha1.Airbyte, 
 					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 						Key: "CRON_MICRONAUT_ENVIRONMENTS",
 						LocalObjectReference: corev1.LocalObjectReference{
-							Name: instance.GetNameWithSuffix("-airbyte-env"),
+							Name: createNameForRoleGroup(instance, "env", ""),
 						},
 					},
 				},
@@ -51,23 +115,14 @@ func (r *AirbyteReconciler) makeCronDeployment(instance *stackv1alpha1.Airbyte, 
 					SecretKeyRef: &corev1.SecretKeySelector{
 						Key: "DATABASE_USER",
 						LocalObjectReference: corev1.LocalObjectReference{
-							Name: instance.GetNameWithSuffix("-airbyte-secrets"),
+							Name: createNameForRoleGroup(instance, "secrets", ""),
 						},
 					},
 				},
 			})
 
-			secretName := instance.GetNameWithSuffix("-airbyte-secrets")
+			secretName := createNameForRoleGroup(instance, "secrets", "")
 			secretKey := "DATABASE_PASSWORD"
-
-			if instance != nil && instance.Spec.Global != nil && instance.Spec.Global.Database != nil {
-				if instance.Spec.Global.Database.SecretName != "" {
-					secretName = instance.Spec.Global.Database.SecretName
-				}
-				if instance.Spec.Global.Database.SecretValue != "" {
-					secretKey = instance.Spec.Global.Database.SecretValue
-				}
-			}
 
 			envVars = append(envVars, corev1.EnvVar{
 				Name: "DATABASE_PASSWORD",
@@ -83,8 +138,8 @@ func (r *AirbyteReconciler) makeCronDeployment(instance *stackv1alpha1.Airbyte, 
 		}
 	}
 
-	if instance != nil && instance.Spec.Cron != nil && instance.Spec.Cron.Secret != nil {
-		for key := range instance.Spec.Cron.Secret {
+	if instance != nil && instance.Spec.Cron != nil && instance.Spec.Cron.RoleConfig.Secret != nil {
+		for key := range instance.Spec.Cron.RoleConfig.Secret {
 			envVars = append(envVars, corev1.EnvVar{
 				Name: key,
 				ValueFrom: &corev1.EnvVarSource{
@@ -99,17 +154,17 @@ func (r *AirbyteReconciler) makeCronDeployment(instance *stackv1alpha1.Airbyte, 
 		}
 	}
 
-	if instance != nil && (instance.Spec.Cron != nil || instance.Spec.Global != nil) {
+	if instance != nil && (instance.Spec.Cron != nil || instance.Spec.ClusterConfig != nil) {
 		envVarsMap := make(map[string]string)
 
-		if instance.Spec.Cron != nil && instance.Spec.Cron.EnvVars != nil {
-			for key, value := range instance.Spec.Cron.EnvVars {
+		if instance.Spec.Cron != nil && instance.Spec.Cron.RoleConfig.EnvVars != nil {
+			for key, value := range instance.Spec.Cron.RoleConfig.EnvVars {
 				envVarsMap[key] = value
 			}
 		}
 
-		if instance.Spec.Global != nil && instance.Spec.Global.EnvVars != nil {
-			for key, value := range instance.Spec.Global.EnvVars {
+		if instance.Spec.ClusterConfig != nil && instance.Spec.ClusterConfig.EnvVars != nil {
+			for key, value := range instance.Spec.ClusterConfig.EnvVars {
 				envVarsMap[key] = value
 			}
 		}
@@ -122,47 +177,8 @@ func (r *AirbyteReconciler) makeCronDeployment(instance *stackv1alpha1.Airbyte, 
 		}
 	}
 
-	if instance != nil && instance.Spec.Cron != nil && instance.Spec.Cron.ExtraEnv != (corev1.EnvVar{}) {
-		envVars = append(envVars, instance.Spec.Cron.ExtraEnv)
+	if instance != nil && instance.Spec.Cron != nil && instance.Spec.Cron.RoleConfig.ExtraEnv != (corev1.EnvVar{}) {
+		envVars = append(envVars, instance.Spec.Cron.RoleConfig.ExtraEnv)
 	}
-
-	dep := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.GetNameWithSuffix("-airbyte-cron"),
-			Namespace: instance.Namespace,
-			Labels:    labels,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Replicas: &instance.Spec.Cron.Replicas,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: labels,
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
-				},
-				Spec: corev1.PodSpec{
-					ServiceAccountName: instance.GetNameWithSuffix("-admin"),
-					SecurityContext:    instance.Spec.SecurityContext,
-					Containers: []corev1.Container{
-						{
-							Name:            "airbyte-cron",
-							Image:           instance.Spec.Cron.Image.Repository + ":" + instance.Spec.Cron.Image.Tag,
-							ImagePullPolicy: instance.Spec.Cron.Image.PullPolicy,
-							Resources:       *instance.Spec.Cron.Resources,
-							Env:             envVars,
-						},
-					},
-				},
-			},
-		},
-	}
-	CronScheduler(instance, dep)
-
-	err := ctrl.SetControllerReference(instance, dep, schema)
-	if err != nil {
-		r.Log.Error(err, "Failed to set controller reference for deployment")
-		return nil
-	}
-	return dep
+	return envVars
 }

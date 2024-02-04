@@ -15,6 +15,7 @@ require (
 	emperror.dev/errors v0.8.1 // indirect
 	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e // indirect
+	k8s.io/kubectl v0.29.0 // indirect
 )
 
 require (

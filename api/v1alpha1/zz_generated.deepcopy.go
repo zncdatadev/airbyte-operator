@@ -23,7 +23,6 @@ package v1alpha1
 import (
 	"k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -59,81 +58,23 @@ func (in *AirbyteApiServerSpec) DeepCopyInto(out *AirbyteApiServerSpec) {
 	*out = *in
 	if in.RoleConfig != nil {
 		in, out := &in.RoleConfig, &out.RoleConfig
-		*out = new(RoleConfigConnectorBuilderServerAndAirbyteApiServerSpec)
+		*out = new(ApiServerRoleConfigSpec)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.RoleGroups != nil {
 		in, out := &in.RoleGroups, &out.RoleGroups
-		*out = make(map[string]*RoleGroupAirbyteApiServerSpec, len(*in))
+		*out = make(map[string]*ApiServerRoleConfigSpec, len(*in))
 		for key, val := range *in {
-			var outVal *RoleGroupAirbyteApiServerSpec
+			var outVal *ApiServerRoleConfigSpec
 			if val == nil {
 				(*out)[key] = nil
 			} else {
 				inVal := (*in)[key]
 				in, out := &inVal, &outVal
-				*out = new(RoleGroupAirbyteApiServerSpec)
+				*out = new(ApiServerRoleConfigSpec)
 				(*in).DeepCopyInto(*out)
 			}
 			(*out)[key] = outVal
-		}
-	}
-	if in.Image != nil {
-		in, out := &in.Image, &out.Image
-		*out = new(ImageSpec)
-		**out = **in
-	}
-	if in.Annotations != nil {
-		in, out := &in.Annotations, &out.Annotations
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.SecurityContext != nil {
-		in, out := &in.SecurityContext, &out.SecurityContext
-		*out = new(v1.PodSecurityContext)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Labels != nil {
-		in, out := &in.Labels, &out.Labels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.NodeSelector != nil {
-		in, out := &in.NodeSelector, &out.NodeSelector
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Tolerations != nil {
-		in, out := &in.Tolerations, &out.Tolerations
-		*out = new(v1.Toleration)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Affinity != nil {
-		in, out := &in.Affinity, &out.Affinity
-		*out = new(v1.Affinity)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Resources != nil {
-		in, out := &in.Resources, &out.Resources
-		*out = new(v1.ResourceRequirements)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Service != nil {
-		in, out := &in.Service, &out.Service
-		*out = new(ServiceSpec)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Secret != nil {
-		in, out := &in.Secret, &out.Secret
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
 		}
 	}
 }
@@ -153,70 +94,24 @@ func (in *AirbyteBootloaderSpec) DeepCopyInto(out *AirbyteBootloaderSpec) {
 	*out = *in
 	if in.RoleConfig != nil {
 		in, out := &in.RoleConfig, &out.RoleConfig
-		*out = new(RoleConfigAirbyteBootloaderSpec)
+		*out = new(BootloaderRoleConfigSpec)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.RoleGroups != nil {
 		in, out := &in.RoleGroups, &out.RoleGroups
-		*out = make(map[string]*RoleGroupAirbyteBootloaderSpec, len(*in))
+		*out = make(map[string]*BootloaderRoleConfigSpec, len(*in))
 		for key, val := range *in {
-			var outVal *RoleGroupAirbyteBootloaderSpec
+			var outVal *BootloaderRoleConfigSpec
 			if val == nil {
 				(*out)[key] = nil
 			} else {
 				inVal := (*in)[key]
 				in, out := &inVal, &outVal
-				*out = new(RoleGroupAirbyteBootloaderSpec)
+				*out = new(BootloaderRoleConfigSpec)
 				(*in).DeepCopyInto(*out)
 			}
 			(*out)[key] = outVal
 		}
-	}
-	if in.Image != nil {
-		in, out := &in.Image, &out.Image
-		*out = new(ImageSpec)
-		**out = **in
-	}
-	if in.Annotations != nil {
-		in, out := &in.Annotations, &out.Annotations
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Labels != nil {
-		in, out := &in.Labels, &out.Labels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.NodeSelector != nil {
-		in, out := &in.NodeSelector, &out.NodeSelector
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Tolerations != nil {
-		in, out := &in.Tolerations, &out.Tolerations
-		*out = new(v1.Toleration)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Affinity != nil {
-		in, out := &in.Affinity, &out.Affinity
-		*out = new(v1.Affinity)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Resources != nil {
-		in, out := &in.Resources, &out.Resources
-		*out = new(v1.ResourceRequirements)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Service != nil {
-		in, out := &in.Service, &out.Service
-		*out = new(ServiceSpec)
-		(*in).DeepCopyInto(*out)
 	}
 }
 
@@ -272,18 +167,8 @@ func (in *AirbyteSpec) DeepCopyInto(out *AirbyteSpec) {
 	}
 	if in.ClusterConfig != nil {
 		in, out := &in.ClusterConfig, &out.ClusterConfig
-		*out = new(ClusterConfigSpec)
+		*out = new(ClusterRoleConfigSpec)
 		(*in).DeepCopyInto(*out)
-	}
-	if in.Postgres != nil {
-		in, out := &in.Postgres, &out.Postgres
-		*out = new(PostgresSpec)
-		**out = **in
-	}
-	if in.Minio != nil {
-		in, out := &in.Minio, &out.Minio
-		*out = new(MinioSpec)
-		**out = **in
 	}
 	if in.Server != nil {
 		in, out := &in.Server, &out.Server
@@ -295,8 +180,8 @@ func (in *AirbyteSpec) DeepCopyInto(out *AirbyteSpec) {
 		*out = new(WorkerSpec)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.AirbyteApiServer != nil {
-		in, out := &in.AirbyteApiServer, &out.AirbyteApiServer
+	if in.ApiServer != nil {
+		in, out := &in.ApiServer, &out.ApiServer
 		*out = new(AirbyteApiServerSpec)
 		(*in).DeepCopyInto(*out)
 	}
@@ -348,35 +233,21 @@ func (in *AirbyteSpec) DeepCopy() *AirbyteSpec {
 }
 
 // DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *AirbyteStatus) DeepCopyInto(out *AirbyteStatus) {
+func (in *ApiServerRoleConfigSpec) DeepCopyInto(out *ApiServerRoleConfigSpec) {
 	*out = *in
-	if in.Conditions != nil {
-		in, out := &in.Conditions, &out.Conditions
-		*out = make([]metav1.Condition, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
+	in.GenericRoleConfigSpec.DeepCopyInto(&out.GenericRoleConfigSpec)
+	if in.Secret != nil {
+		in, out := &in.Secret, &out.Secret
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
 		}
 	}
-	if in.URLs != nil {
-		in, out := &in.URLs, &out.URLs
-		*out = make([]StatusURL, len(*in))
-		copy(*out, *in)
+	if in.Debug != nil {
+		in, out := &in.Debug, &out.Debug
+		*out = new(DebugSpec)
+		**out = **in
 	}
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new AirbyteStatus.
-func (in *AirbyteStatus) DeepCopy() *AirbyteStatus {
-	if in == nil {
-		return nil
-	}
-	out := new(AirbyteStatus)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *ClusterConfigSpec) DeepCopyInto(out *ClusterConfigSpec) {
-	*out = *in
 	if in.EnvVars != nil {
 		in, out := &in.EnvVars, &out.EnvVars
 		*out = make(map[string]string, len(*in))
@@ -384,10 +255,187 @@ func (in *ClusterConfigSpec) DeepCopyInto(out *ClusterConfigSpec) {
 			(*out)[key] = val
 		}
 	}
+	if in.ExtraEnv != nil {
+		in, out := &in.ExtraEnv, &out.ExtraEnv
+		*out = new(v1.EnvVar)
+		(*in).DeepCopyInto(*out)
+	}
+}
+
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new ApiServerRoleConfigSpec.
+func (in *ApiServerRoleConfigSpec) DeepCopy() *ApiServerRoleConfigSpec {
+	if in == nil {
+		return nil
+	}
+	out := new(ApiServerRoleConfigSpec)
+	in.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *BaseConfigSpec) DeepCopyInto(out *BaseConfigSpec) {
+	*out = *in
+	if in.Resources != nil {
+		in, out := &in.Resources, &out.Resources
+		*out = new(ResourcesSpec)
+		(*in).DeepCopyInto(*out)
+	}
+}
+
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new BaseConfigSpec.
+func (in *BaseConfigSpec) DeepCopy() *BaseConfigSpec {
+	if in == nil {
+		return nil
+	}
+	out := new(BaseConfigSpec)
+	in.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *BaseRoleConfigSpec) DeepCopyInto(out *BaseRoleConfigSpec) {
+	*out = *in
+	if in.Image != nil {
+		in, out := &in.Image, &out.Image
+		*out = new(ImageSpec)
+		**out = **in
+	}
+	if in.Labels != nil {
+		in, out := &in.Labels, &out.Labels
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
+	if in.SecurityContext != nil {
+		in, out := &in.SecurityContext, &out.SecurityContext
+		*out = new(v1.PodSecurityContext)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.MatchLabels != nil {
+		in, out := &in.MatchLabels, &out.MatchLabels
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
+	if in.Affinity != nil {
+		in, out := &in.Affinity, &out.Affinity
+		*out = new(v1.Affinity)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.NodeSelector != nil {
+		in, out := &in.NodeSelector, &out.NodeSelector
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
+	if in.Tolerations != nil {
+		in, out := &in.Tolerations, &out.Tolerations
+		*out = new(v1.Toleration)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.Service != nil {
+		in, out := &in.Service, &out.Service
+		*out = new(ServiceSpec)
+		(*in).DeepCopyInto(*out)
+	}
+}
+
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new BaseRoleConfigSpec.
+func (in *BaseRoleConfigSpec) DeepCopy() *BaseRoleConfigSpec {
+	if in == nil {
+		return nil
+	}
+	out := new(BaseRoleConfigSpec)
+	in.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *BootloaderRoleConfigSpec) DeepCopyInto(out *BootloaderRoleConfigSpec) {
+	*out = *in
+	in.GenericRoleConfigSpec.DeepCopyInto(&out.GenericRoleConfigSpec)
+	if in.RunDatabaseMigrationsOnStartup != nil {
+		in, out := &in.RunDatabaseMigrationsOnStartup, &out.RunDatabaseMigrationsOnStartup
+		*out = new(bool)
+		**out = **in
+	}
+}
+
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new BootloaderRoleConfigSpec.
+func (in *BootloaderRoleConfigSpec) DeepCopy() *BootloaderRoleConfigSpec {
+	if in == nil {
+		return nil
+	}
+	out := new(BootloaderRoleConfigSpec)
+	in.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *CPUResource) DeepCopyInto(out *CPUResource) {
+	*out = *in
+	if in.Max != nil {
+		in, out := &in.Max, &out.Max
+		x := (*in).DeepCopy()
+		*out = &x
+	}
+	if in.Min != nil {
+		in, out := &in.Min, &out.Min
+		x := (*in).DeepCopy()
+		*out = &x
+	}
+}
+
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new CPUResource.
+func (in *CPUResource) DeepCopy() *CPUResource {
+	if in == nil {
+		return nil
+	}
+	out := new(CPUResource)
+	in.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *ClusterConfigSpec) DeepCopyInto(out *ClusterConfigSpec) {
+	*out = *in
+	in.GenericRoleConfigSpec.DeepCopyInto(&out.GenericRoleConfigSpec)
 	if in.Database != nil {
 		in, out := &in.Database, &out.Database
-		*out = new(DatabaseClusterConfigSpec)
+		*out = new(DatabaseSpec)
 		**out = **in
+	}
+}
+
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new ClusterConfigSpec.
+func (in *ClusterConfigSpec) DeepCopy() *ClusterConfigSpec {
+	if in == nil {
+		return nil
+	}
+	out := new(ClusterConfigSpec)
+	in.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *ClusterRoleConfigSpec) DeepCopyInto(out *ClusterRoleConfigSpec) {
+	*out = *in
+	in.BaseRoleConfigSpec.DeepCopyInto(&out.BaseRoleConfigSpec)
+	in.Config.DeepCopyInto(&out.Config)
+	if in.EnvVars != nil {
+		in, out := &in.EnvVars, &out.EnvVars
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
+	if in.StateStorage != nil {
+		in, out := &in.StateStorage, &out.StateStorage
+		*out = new(StateStorageClusterConfigSpec)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Logs != nil {
 		in, out := &in.Logs, &out.Logs
@@ -404,224 +452,32 @@ func (in *ClusterConfigSpec) DeepCopyInto(out *ClusterConfigSpec) {
 		*out = new(JobsClusterConfigSpec)
 		(*in).DeepCopyInto(*out)
 	}
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new ClusterConfigSpec.
-func (in *ClusterConfigSpec) DeepCopy() *ClusterConfigSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(ClusterConfigSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *ConfigRoleGroupAirbyteApiServerSpec) DeepCopyInto(out *ConfigRoleGroupAirbyteApiServerSpec) {
-	*out = *in
-	if in.Image != nil {
-		in, out := &in.Image, &out.Image
-		*out = new(ImageSpec)
-		**out = **in
-	}
-	if in.Annotations != nil {
-		in, out := &in.Annotations, &out.Annotations
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.SecurityContext != nil {
-		in, out := &in.SecurityContext, &out.SecurityContext
-		*out = new(v1.PodSecurityContext)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.MatchLabels != nil {
-		in, out := &in.MatchLabels, &out.MatchLabels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.NodeSelector != nil {
-		in, out := &in.NodeSelector, &out.NodeSelector
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Tolerations != nil {
-		in, out := &in.Tolerations, &out.Tolerations
-		*out = new(v1.Toleration)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Affinity != nil {
-		in, out := &in.Affinity, &out.Affinity
-		*out = new(v1.Affinity)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Resources != nil {
-		in, out := &in.Resources, &out.Resources
-		*out = new(v1.ResourceRequirements)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Service != nil {
-		in, out := &in.Service, &out.Service
-		*out = new(ServiceSpec)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Secret != nil {
-		in, out := &in.Secret, &out.Secret
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Debug != nil {
-		in, out := &in.Debug, &out.Debug
-		*out = new(DebugSpec)
-		**out = **in
-	}
-	if in.EnvVars != nil {
-		in, out := &in.EnvVars, &out.EnvVars
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	in.ExtraEnv.DeepCopyInto(&out.ExtraEnv)
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new ConfigRoleGroupAirbyteApiServerSpec.
-func (in *ConfigRoleGroupAirbyteApiServerSpec) DeepCopy() *ConfigRoleGroupAirbyteApiServerSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(ConfigRoleGroupAirbyteApiServerSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *ConfigRoleGroupAirbyteBootloaderSpec) DeepCopyInto(out *ConfigRoleGroupAirbyteBootloaderSpec) {
-	*out = *in
-	if in.Image != nil {
-		in, out := &in.Image, &out.Image
-		*out = new(ImageSpec)
-		**out = **in
-	}
-	if in.Annotations != nil {
-		in, out := &in.Annotations, &out.Annotations
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.MatchLabels != nil {
-		in, out := &in.MatchLabels, &out.MatchLabels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.NodeSelector != nil {
-		in, out := &in.NodeSelector, &out.NodeSelector
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Tolerations != nil {
-		in, out := &in.Tolerations, &out.Tolerations
-		*out = new(v1.Toleration)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Affinity != nil {
-		in, out := &in.Affinity, &out.Affinity
-		*out = new(v1.Affinity)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Resources != nil {
-		in, out := &in.Resources, &out.Resources
-		*out = new(v1.ResourceRequirements)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Service != nil {
-		in, out := &in.Service, &out.Service
-		*out = new(ServiceSpec)
-		(*in).DeepCopyInto(*out)
-	}
 	if in.RunDatabaseMigrationsOnStartup != nil {
 		in, out := &in.RunDatabaseMigrationsOnStartup, &out.RunDatabaseMigrationsOnStartup
 		*out = new(bool)
 		**out = **in
 	}
+	if in.ExtraEnv != nil {
+		in, out := &in.ExtraEnv, &out.ExtraEnv
+		*out = new(v1.EnvVar)
+		(*in).DeepCopyInto(*out)
+	}
 }
 
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new ConfigRoleGroupAirbyteBootloaderSpec.
-func (in *ConfigRoleGroupAirbyteBootloaderSpec) DeepCopy() *ConfigRoleGroupAirbyteBootloaderSpec {
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new ClusterRoleConfigSpec.
+func (in *ClusterRoleConfigSpec) DeepCopy() *ClusterRoleConfigSpec {
 	if in == nil {
 		return nil
 	}
-	out := new(ConfigRoleGroupAirbyteBootloaderSpec)
+	out := new(ClusterRoleConfigSpec)
 	in.DeepCopyInto(out)
 	return out
 }
 
 // DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *ConfigRoleGroupConnectorBuilderServerSpec) DeepCopyInto(out *ConfigRoleGroupConnectorBuilderServerSpec) {
+func (in *ConnectorBuilderServerRoleConfigSpec) DeepCopyInto(out *ConnectorBuilderServerRoleConfigSpec) {
 	*out = *in
-	if in.Image != nil {
-		in, out := &in.Image, &out.Image
-		*out = new(ImageSpec)
-		**out = **in
-	}
-	if in.Annotations != nil {
-		in, out := &in.Annotations, &out.Annotations
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.SecurityContext != nil {
-		in, out := &in.SecurityContext, &out.SecurityContext
-		*out = new(v1.PodSecurityContext)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.MatchLabels != nil {
-		in, out := &in.MatchLabels, &out.MatchLabels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.NodeSelector != nil {
-		in, out := &in.NodeSelector, &out.NodeSelector
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Tolerations != nil {
-		in, out := &in.Tolerations, &out.Tolerations
-		*out = new(v1.Toleration)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Affinity != nil {
-		in, out := &in.Affinity, &out.Affinity
-		*out = new(v1.Affinity)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Resources != nil {
-		in, out := &in.Resources, &out.Resources
-		*out = new(v1.ResourceRequirements)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Service != nil {
-		in, out := &in.Service, &out.Service
-		*out = new(ServiceSpec)
-		(*in).DeepCopyInto(*out)
-	}
+	in.GenericRoleConfigSpec.DeepCopyInto(&out.GenericRoleConfigSpec)
 	if in.Secret != nil {
 		in, out := &in.Secret, &out.Secret
 		*out = make(map[string]string, len(*in))
@@ -641,531 +497,19 @@ func (in *ConfigRoleGroupConnectorBuilderServerSpec) DeepCopyInto(out *ConfigRol
 			(*out)[key] = val
 		}
 	}
-	in.ExtraEnv.DeepCopyInto(&out.ExtraEnv)
+	if in.ExtraEnv != nil {
+		in, out := &in.ExtraEnv, &out.ExtraEnv
+		*out = new(v1.EnvVar)
+		(*in).DeepCopyInto(*out)
+	}
 }
 
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new ConfigRoleGroupConnectorBuilderServerSpec.
-func (in *ConfigRoleGroupConnectorBuilderServerSpec) DeepCopy() *ConfigRoleGroupConnectorBuilderServerSpec {
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new ConnectorBuilderServerRoleConfigSpec.
+func (in *ConnectorBuilderServerRoleConfigSpec) DeepCopy() *ConnectorBuilderServerRoleConfigSpec {
 	if in == nil {
 		return nil
 	}
-	out := new(ConfigRoleGroupConnectorBuilderServerSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *ConfigRoleGroupCronSpec) DeepCopyInto(out *ConfigRoleGroupCronSpec) {
-	*out = *in
-	if in.Image != nil {
-		in, out := &in.Image, &out.Image
-		*out = new(ImageSpec)
-		**out = **in
-	}
-	if in.Annotations != nil {
-		in, out := &in.Annotations, &out.Annotations
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.MatchLabels != nil {
-		in, out := &in.MatchLabels, &out.MatchLabels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.NodeSelector != nil {
-		in, out := &in.NodeSelector, &out.NodeSelector
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Tolerations != nil {
-		in, out := &in.Tolerations, &out.Tolerations
-		*out = new(v1.Toleration)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Affinity != nil {
-		in, out := &in.Affinity, &out.Affinity
-		*out = new(v1.Affinity)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Resources != nil {
-		in, out := &in.Resources, &out.Resources
-		*out = new(v1.ResourceRequirements)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Secret != nil {
-		in, out := &in.Secret, &out.Secret
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.EnvVars != nil {
-		in, out := &in.EnvVars, &out.EnvVars
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	in.ExtraEnv.DeepCopyInto(&out.ExtraEnv)
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new ConfigRoleGroupCronSpec.
-func (in *ConfigRoleGroupCronSpec) DeepCopy() *ConfigRoleGroupCronSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(ConfigRoleGroupCronSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *ConfigRoleGroupKeycloakSpec) DeepCopyInto(out *ConfigRoleGroupKeycloakSpec) {
-	*out = *in
-	if in.Image != nil {
-		in, out := &in.Image, &out.Image
-		*out = new(ImageSpec)
-		**out = **in
-	}
-	if in.Annotations != nil {
-		in, out := &in.Annotations, &out.Annotations
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.MatchLabels != nil {
-		in, out := &in.MatchLabels, &out.MatchLabels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.NodeSelector != nil {
-		in, out := &in.NodeSelector, &out.NodeSelector
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Tolerations != nil {
-		in, out := &in.Tolerations, &out.Tolerations
-		*out = new(v1.Toleration)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Affinity != nil {
-		in, out := &in.Affinity, &out.Affinity
-		*out = new(v1.Affinity)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Resources != nil {
-		in, out := &in.Resources, &out.Resources
-		*out = new(v1.ResourceRequirements)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Service != nil {
-		in, out := &in.Service, &out.Service
-		*out = new(ServiceSpec)
-		(*in).DeepCopyInto(*out)
-	}
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new ConfigRoleGroupKeycloakSpec.
-func (in *ConfigRoleGroupKeycloakSpec) DeepCopy() *ConfigRoleGroupKeycloakSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(ConfigRoleGroupKeycloakSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *ConfigRoleGroupPodSweeperSpec) DeepCopyInto(out *ConfigRoleGroupPodSweeperSpec) {
-	*out = *in
-	if in.Image != nil {
-		in, out := &in.Image, &out.Image
-		*out = new(ImageSpec)
-		**out = **in
-	}
-	if in.Annotations != nil {
-		in, out := &in.Annotations, &out.Annotations
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.SecurityContext != nil {
-		in, out := &in.SecurityContext, &out.SecurityContext
-		*out = new(v1.PodSecurityContext)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.MatchLabels != nil {
-		in, out := &in.MatchLabels, &out.MatchLabels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.NodeSelector != nil {
-		in, out := &in.NodeSelector, &out.NodeSelector
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Tolerations != nil {
-		in, out := &in.Tolerations, &out.Tolerations
-		*out = new(v1.Toleration)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Affinity != nil {
-		in, out := &in.Affinity, &out.Affinity
-		*out = new(v1.Affinity)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Resources != nil {
-		in, out := &in.Resources, &out.Resources
-		*out = new(v1.ResourceRequirements)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.LivenessProbe != nil {
-		in, out := &in.LivenessProbe, &out.LivenessProbe
-		*out = new(ProbeSpec)
-		**out = **in
-	}
-	if in.ReadinessProbe != nil {
-		in, out := &in.ReadinessProbe, &out.ReadinessProbe
-		*out = new(ProbeSpec)
-		**out = **in
-	}
-	if in.ExtraVolumes != nil {
-		in, out := &in.ExtraVolumes, &out.ExtraVolumes
-		*out = make([]v1.Volume, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
-		}
-	}
-	if in.ExtraVolumeMounts != nil {
-		in, out := &in.ExtraVolumeMounts, &out.ExtraVolumeMounts
-		*out = make([]v1.VolumeMount, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
-		}
-	}
-	if in.TimeToDeletePods != nil {
-		in, out := &in.TimeToDeletePods, &out.TimeToDeletePods
-		*out = new(PodSweeperTimeToDeletePodsSpec)
-		**out = **in
-	}
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new ConfigRoleGroupPodSweeperSpec.
-func (in *ConfigRoleGroupPodSweeperSpec) DeepCopy() *ConfigRoleGroupPodSweeperSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(ConfigRoleGroupPodSweeperSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *ConfigRoleGroupServerSpec) DeepCopyInto(out *ConfigRoleGroupServerSpec) {
-	*out = *in
-	if in.Image != nil {
-		in, out := &in.Image, &out.Image
-		*out = new(ImageSpec)
-		**out = **in
-	}
-	if in.Resources != nil {
-		in, out := &in.Resources, &out.Resources
-		*out = new(v1.ResourceRequirements)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.SecurityContext != nil {
-		in, out := &in.SecurityContext, &out.SecurityContext
-		*out = new(v1.PodSecurityContext)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.MatchLabels != nil {
-		in, out := &in.MatchLabels, &out.MatchLabels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.NodeSelector != nil {
-		in, out := &in.NodeSelector, &out.NodeSelector
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Tolerations != nil {
-		in, out := &in.Tolerations, &out.Tolerations
-		*out = new(v1.Toleration)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Affinity != nil {
-		in, out := &in.Affinity, &out.Affinity
-		*out = new(v1.Affinity)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Secret != nil {
-		in, out := &in.Secret, &out.Secret
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Service != nil {
-		in, out := &in.Service, &out.Service
-		*out = new(ServiceSpec)
-		(*in).DeepCopyInto(*out)
-	}
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new ConfigRoleGroupServerSpec.
-func (in *ConfigRoleGroupServerSpec) DeepCopy() *ConfigRoleGroupServerSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(ConfigRoleGroupServerSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *ConfigRoleGroupTemporalSpec) DeepCopyInto(out *ConfigRoleGroupTemporalSpec) {
-	*out = *in
-	if in.Image != nil {
-		in, out := &in.Image, &out.Image
-		*out = new(ImageSpec)
-		**out = **in
-	}
-	if in.Annotations != nil {
-		in, out := &in.Annotations, &out.Annotations
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.MatchLabels != nil {
-		in, out := &in.MatchLabels, &out.MatchLabels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.NodeSelector != nil {
-		in, out := &in.NodeSelector, &out.NodeSelector
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Tolerations != nil {
-		in, out := &in.Tolerations, &out.Tolerations
-		*out = new(v1.Toleration)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Affinity != nil {
-		in, out := &in.Affinity, &out.Affinity
-		*out = new(v1.Affinity)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Resources != nil {
-		in, out := &in.Resources, &out.Resources
-		*out = new(v1.ResourceRequirements)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Service != nil {
-		in, out := &in.Service, &out.Service
-		*out = new(ServiceSpec)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Secret != nil {
-		in, out := &in.Secret, &out.Secret
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.EnvVars != nil {
-		in, out := &in.EnvVars, &out.EnvVars
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	in.ExtraEnv.DeepCopyInto(&out.ExtraEnv)
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new ConfigRoleGroupTemporalSpec.
-func (in *ConfigRoleGroupTemporalSpec) DeepCopy() *ConfigRoleGroupTemporalSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(ConfigRoleGroupTemporalSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *ConfigRoleGroupWebAppSpec) DeepCopyInto(out *ConfigRoleGroupWebAppSpec) {
-	*out = *in
-	if in.Image != nil {
-		in, out := &in.Image, &out.Image
-		*out = new(ImageSpec)
-		**out = **in
-	}
-	if in.Annotations != nil {
-		in, out := &in.Annotations, &out.Annotations
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.SecurityContext != nil {
-		in, out := &in.SecurityContext, &out.SecurityContext
-		*out = new(v1.PodSecurityContext)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.MatchLabels != nil {
-		in, out := &in.MatchLabels, &out.MatchLabels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Ingress != nil {
-		in, out := &in.Ingress, &out.Ingress
-		*out = new(WebAppIngressSpec)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.NodeSelector != nil {
-		in, out := &in.NodeSelector, &out.NodeSelector
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Tolerations != nil {
-		in, out := &in.Tolerations, &out.Tolerations
-		*out = new(v1.Toleration)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Affinity != nil {
-		in, out := &in.Affinity, &out.Affinity
-		*out = new(v1.Affinity)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Resources != nil {
-		in, out := &in.Resources, &out.Resources
-		*out = new(v1.ResourceRequirements)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Service != nil {
-		in, out := &in.Service, &out.Service
-		*out = new(ServiceSpec)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Secret != nil {
-		in, out := &in.Secret, &out.Secret
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.EnvVars != nil {
-		in, out := &in.EnvVars, &out.EnvVars
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	in.ExtraEnv.DeepCopyInto(&out.ExtraEnv)
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new ConfigRoleGroupWebAppSpec.
-func (in *ConfigRoleGroupWebAppSpec) DeepCopy() *ConfigRoleGroupWebAppSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(ConfigRoleGroupWebAppSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *ConfigRoleGroupWorkerSpec) DeepCopyInto(out *ConfigRoleGroupWorkerSpec) {
-	*out = *in
-	if in.Image != nil {
-		in, out := &in.Image, &out.Image
-		*out = new(ImageSpec)
-		**out = **in
-	}
-	if in.SecurityContext != nil {
-		in, out := &in.SecurityContext, &out.SecurityContext
-		*out = new(v1.PodSecurityContext)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Resources != nil {
-		in, out := &in.Resources, &out.Resources
-		*out = new(v1.ResourceRequirements)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Annotations != nil {
-		in, out := &in.Annotations, &out.Annotations
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.MatchLabels != nil {
-		in, out := &in.MatchLabels, &out.MatchLabels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.NodeSelector != nil {
-		in, out := &in.NodeSelector, &out.NodeSelector
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Tolerations != nil {
-		in, out := &in.Tolerations, &out.Tolerations
-		*out = new(v1.Toleration)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Affinity != nil {
-		in, out := &in.Affinity, &out.Affinity
-		*out = new(v1.Affinity)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.ContainerOrchestrator != nil {
-		in, out := &in.ContainerOrchestrator, &out.ContainerOrchestrator
-		*out = new(ContainerOrchestratorSpec)
-		**out = **in
-	}
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new ConfigRoleGroupWorkerSpec.
-func (in *ConfigRoleGroupWorkerSpec) DeepCopy() *ConfigRoleGroupWorkerSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(ConfigRoleGroupWorkerSpec)
+	out := new(ConnectorBuilderServerRoleConfigSpec)
 	in.DeepCopyInto(out)
 	return out
 }
@@ -1175,81 +519,23 @@ func (in *ConnectorBuilderServerSpec) DeepCopyInto(out *ConnectorBuilderServerSp
 	*out = *in
 	if in.RoleConfig != nil {
 		in, out := &in.RoleConfig, &out.RoleConfig
-		*out = new(RoleConfigConnectorBuilderServerAndAirbyteApiServerSpec)
+		*out = new(ConnectorBuilderServerRoleConfigSpec)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.RoleGroups != nil {
 		in, out := &in.RoleGroups, &out.RoleGroups
-		*out = make(map[string]*RoleGroupConnectorBuilderServerSpec, len(*in))
+		*out = make(map[string]*ConnectorBuilderServerRoleConfigSpec, len(*in))
 		for key, val := range *in {
-			var outVal *RoleGroupConnectorBuilderServerSpec
+			var outVal *ConnectorBuilderServerRoleConfigSpec
 			if val == nil {
 				(*out)[key] = nil
 			} else {
 				inVal := (*in)[key]
 				in, out := &inVal, &outVal
-				*out = new(RoleGroupConnectorBuilderServerSpec)
+				*out = new(ConnectorBuilderServerRoleConfigSpec)
 				(*in).DeepCopyInto(*out)
 			}
 			(*out)[key] = outVal
-		}
-	}
-	if in.Image != nil {
-		in, out := &in.Image, &out.Image
-		*out = new(ImageSpec)
-		**out = **in
-	}
-	if in.Annotations != nil {
-		in, out := &in.Annotations, &out.Annotations
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.SecurityContext != nil {
-		in, out := &in.SecurityContext, &out.SecurityContext
-		*out = new(v1.PodSecurityContext)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Labels != nil {
-		in, out := &in.Labels, &out.Labels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.NodeSelector != nil {
-		in, out := &in.NodeSelector, &out.NodeSelector
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Tolerations != nil {
-		in, out := &in.Tolerations, &out.Tolerations
-		*out = new(v1.Toleration)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Affinity != nil {
-		in, out := &in.Affinity, &out.Affinity
-		*out = new(v1.Affinity)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Resources != nil {
-		in, out := &in.Resources, &out.Resources
-		*out = new(v1.ResourceRequirements)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Service != nil {
-		in, out := &in.Service, &out.Service
-		*out = new(ServiceSpec)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Secret != nil {
-		in, out := &in.Secret, &out.Secret
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
 		}
 	}
 }
@@ -1280,75 +566,58 @@ func (in *ContainerOrchestratorSpec) DeepCopy() *ContainerOrchestratorSpec {
 }
 
 // DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *CronSpec) DeepCopyInto(out *CronSpec) {
+func (in *CronRoleConfigSpec) DeepCopyInto(out *CronRoleConfigSpec) {
 	*out = *in
-	if in.RoleConfig != nil {
-		in, out := &in.RoleConfig, &out.RoleConfig
-		*out = new(RoleConfigCronAndTemporalSpec)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.RoleGroups != nil {
-		in, out := &in.RoleGroups, &out.RoleGroups
-		*out = make(map[string]*RoleGroupCronSpec, len(*in))
-		for key, val := range *in {
-			var outVal *RoleGroupCronSpec
-			if val == nil {
-				(*out)[key] = nil
-			} else {
-				inVal := (*in)[key]
-				in, out := &inVal, &outVal
-				*out = new(RoleGroupCronSpec)
-				(*in).DeepCopyInto(*out)
-			}
-			(*out)[key] = outVal
-		}
-	}
-	if in.Image != nil {
-		in, out := &in.Image, &out.Image
-		*out = new(ImageSpec)
-		**out = **in
-	}
-	if in.Annotations != nil {
-		in, out := &in.Annotations, &out.Annotations
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Labels != nil {
-		in, out := &in.Labels, &out.Labels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.NodeSelector != nil {
-		in, out := &in.NodeSelector, &out.NodeSelector
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Tolerations != nil {
-		in, out := &in.Tolerations, &out.Tolerations
-		*out = new(v1.Toleration)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Affinity != nil {
-		in, out := &in.Affinity, &out.Affinity
-		*out = new(v1.Affinity)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Resources != nil {
-		in, out := &in.Resources, &out.Resources
-		*out = new(v1.ResourceRequirements)
-		(*in).DeepCopyInto(*out)
-	}
+	in.GenericRoleConfigSpec.DeepCopyInto(&out.GenericRoleConfigSpec)
 	if in.Secret != nil {
 		in, out := &in.Secret, &out.Secret
 		*out = make(map[string]string, len(*in))
 		for key, val := range *in {
 			(*out)[key] = val
+		}
+	}
+	if in.EnvVars != nil {
+		in, out := &in.EnvVars, &out.EnvVars
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
+	in.ExtraEnv.DeepCopyInto(&out.ExtraEnv)
+}
+
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new CronRoleConfigSpec.
+func (in *CronRoleConfigSpec) DeepCopy() *CronRoleConfigSpec {
+	if in == nil {
+		return nil
+	}
+	out := new(CronRoleConfigSpec)
+	in.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *CronSpec) DeepCopyInto(out *CronSpec) {
+	*out = *in
+	if in.RoleConfig != nil {
+		in, out := &in.RoleConfig, &out.RoleConfig
+		*out = new(CronRoleConfigSpec)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.RoleGroups != nil {
+		in, out := &in.RoleGroups, &out.RoleGroups
+		*out = make(map[string]*CronRoleConfigSpec, len(*in))
+		for key, val := range *in {
+			var outVal *CronRoleConfigSpec
+			if val == nil {
+				(*out)[key] = nil
+			} else {
+				inVal := (*in)[key]
+				in, out := &inVal, &outVal
+				*out = new(CronRoleConfigSpec)
+				(*in).DeepCopyInto(*out)
+			}
+			(*out)[key] = outVal
 		}
 	}
 }
@@ -1364,16 +633,16 @@ func (in *CronSpec) DeepCopy() *CronSpec {
 }
 
 // DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *DatabaseClusterConfigSpec) DeepCopyInto(out *DatabaseClusterConfigSpec) {
+func (in *DatabaseSpec) DeepCopyInto(out *DatabaseSpec) {
 	*out = *in
 }
 
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new DatabaseClusterConfigSpec.
-func (in *DatabaseClusterConfigSpec) DeepCopy() *DatabaseClusterConfigSpec {
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new DatabaseSpec.
+func (in *DatabaseSpec) DeepCopy() *DatabaseSpec {
 	if in == nil {
 		return nil
 	}
-	out := new(DatabaseClusterConfigSpec)
+	out := new(DatabaseSpec)
 	in.DeepCopyInto(out)
 	return out
 }
@@ -1394,6 +663,27 @@ func (in *DebugSpec) DeepCopy() *DebugSpec {
 }
 
 // DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *GenericRoleConfigSpec) DeepCopyInto(out *GenericRoleConfigSpec) {
+	*out = *in
+	in.BaseRoleConfigSpec.DeepCopyInto(&out.BaseRoleConfigSpec)
+	if in.Config != nil {
+		in, out := &in.Config, &out.Config
+		*out = new(BaseConfigSpec)
+		(*in).DeepCopyInto(*out)
+	}
+}
+
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new GenericRoleConfigSpec.
+func (in *GenericRoleConfigSpec) DeepCopy() *GenericRoleConfigSpec {
+	if in == nil {
+		return nil
+	}
+	out := new(GenericRoleConfigSpec)
+	in.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
 func (in *ImageSpec) DeepCopyInto(out *ImageSpec) {
 	*out = *in
 }
@@ -1404,6 +694,54 @@ func (in *ImageSpec) DeepCopy() *ImageSpec {
 		return nil
 	}
 	out := new(ImageSpec)
+	in.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *IngresRoleConfigSpec) DeepCopyInto(out *IngresRoleConfigSpec) {
+	*out = *in
+	in.BaseRoleConfigSpec.DeepCopyInto(&out.BaseRoleConfigSpec)
+	if in.Ingress != nil {
+		in, out := &in.Ingress, &out.Ingress
+		*out = new(IngressSpec)
+		(*in).DeepCopyInto(*out)
+	}
+}
+
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new IngresRoleConfigSpec.
+func (in *IngresRoleConfigSpec) DeepCopy() *IngresRoleConfigSpec {
+	if in == nil {
+		return nil
+	}
+	out := new(IngresRoleConfigSpec)
+	in.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *IngressSpec) DeepCopyInto(out *IngressSpec) {
+	*out = *in
+	if in.TLS != nil {
+		in, out := &in.TLS, &out.TLS
+		*out = new(networkingv1.IngressTLS)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.Annotations != nil {
+		in, out := &in.Annotations, &out.Annotations
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
+}
+
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new IngressSpec.
+func (in *IngressSpec) DeepCopy() *IngressSpec {
+	if in == nil {
+		return nil
+	}
+	out := new(IngressSpec)
 	in.DeepCopyInto(out)
 	return out
 }
@@ -1495,74 +833,44 @@ func (in *JobsKubeImagesClusterConfigSpec) DeepCopy() *JobsKubeImagesClusterConf
 }
 
 // DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *KeycloakRoleConfigSpec) DeepCopyInto(out *KeycloakRoleConfigSpec) {
+	*out = *in
+	in.GenericRoleConfigSpec.DeepCopyInto(&out.GenericRoleConfigSpec)
+}
+
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new KeycloakRoleConfigSpec.
+func (in *KeycloakRoleConfigSpec) DeepCopy() *KeycloakRoleConfigSpec {
+	if in == nil {
+		return nil
+	}
+	out := new(KeycloakRoleConfigSpec)
+	in.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
 func (in *KeycloakSpec) DeepCopyInto(out *KeycloakSpec) {
 	*out = *in
 	if in.RoleConfig != nil {
 		in, out := &in.RoleConfig, &out.RoleConfig
-		*out = new(RoleConfigKeycloakSpec)
-		**out = **in
+		*out = new(KeycloakRoleConfigSpec)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.RoleGroups != nil {
 		in, out := &in.RoleGroups, &out.RoleGroups
-		*out = make(map[string]*RoleGroupKeycloakSpec, len(*in))
+		*out = make(map[string]*KeycloakRoleConfigSpec, len(*in))
 		for key, val := range *in {
-			var outVal *RoleGroupKeycloakSpec
+			var outVal *KeycloakRoleConfigSpec
 			if val == nil {
 				(*out)[key] = nil
 			} else {
 				inVal := (*in)[key]
 				in, out := &inVal, &outVal
-				*out = new(RoleGroupKeycloakSpec)
+				*out = new(KeycloakRoleConfigSpec)
 				(*in).DeepCopyInto(*out)
 			}
 			(*out)[key] = outVal
 		}
-	}
-	if in.Image != nil {
-		in, out := &in.Image, &out.Image
-		*out = new(ImageSpec)
-		**out = **in
-	}
-	if in.Annotations != nil {
-		in, out := &in.Annotations, &out.Annotations
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Labels != nil {
-		in, out := &in.Labels, &out.Labels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.NodeSelector != nil {
-		in, out := &in.NodeSelector, &out.NodeSelector
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Tolerations != nil {
-		in, out := &in.Tolerations, &out.Tolerations
-		*out = new(v1.Toleration)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Affinity != nil {
-		in, out := &in.Affinity, &out.Affinity
-		*out = new(v1.Affinity)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Resources != nil {
-		in, out := &in.Resources, &out.Resources
-		*out = new(v1.ResourceRequirements)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Service != nil {
-		in, out := &in.Service, &out.Service
-		*out = new(ServiceSpec)
-		(*in).DeepCopyInto(*out)
 	}
 }
 
@@ -1577,111 +885,11 @@ func (in *KeycloakSpec) DeepCopy() *KeycloakSpec {
 }
 
 // DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *LogExternalMinioClusterConfigSpec) DeepCopyInto(out *LogExternalMinioClusterConfigSpec) {
-	*out = *in
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new LogExternalMinioClusterConfigSpec.
-func (in *LogExternalMinioClusterConfigSpec) DeepCopy() *LogExternalMinioClusterConfigSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(LogExternalMinioClusterConfigSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *LogGcsClusterConfigSpec) DeepCopyInto(out *LogGcsClusterConfigSpec) {
-	*out = *in
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new LogGcsClusterConfigSpec.
-func (in *LogGcsClusterConfigSpec) DeepCopy() *LogGcsClusterConfigSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(LogGcsClusterConfigSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *LogMinioClusterConfigSpec) DeepCopyInto(out *LogMinioClusterConfigSpec) {
-	*out = *in
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new LogMinioClusterConfigSpec.
-func (in *LogMinioClusterConfigSpec) DeepCopy() *LogMinioClusterConfigSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(LogMinioClusterConfigSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *LogS3ClusterConfigSpec) DeepCopyInto(out *LogS3ClusterConfigSpec) {
-	*out = *in
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new LogS3ClusterConfigSpec.
-func (in *LogS3ClusterConfigSpec) DeepCopy() *LogS3ClusterConfigSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(LogS3ClusterConfigSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *LogsAccessKeyClusterConfigSpec) DeepCopyInto(out *LogsAccessKeyClusterConfigSpec) {
-	*out = *in
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new LogsAccessKeyClusterConfigSpec.
-func (in *LogsAccessKeyClusterConfigSpec) DeepCopy() *LogsAccessKeyClusterConfigSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(LogsAccessKeyClusterConfigSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
 func (in *LogsClusterConfigSpec) DeepCopyInto(out *LogsClusterConfigSpec) {
 	*out = *in
-	if in.AccessKey != nil {
-		in, out := &in.AccessKey, &out.AccessKey
-		*out = new(LogsAccessKeyClusterConfigSpec)
-		**out = **in
-	}
-	if in.SecretKey != nil {
-		in, out := &in.SecretKey, &out.SecretKey
-		*out = new(LogsSecretKeyClusterConfigSpec)
-		**out = **in
-	}
-	if in.Minio != nil {
-		in, out := &in.Minio, &out.Minio
-		*out = new(LogMinioClusterConfigSpec)
-		**out = **in
-	}
-	if in.ExternalMinio != nil {
-		in, out := &in.ExternalMinio, &out.ExternalMinio
-		*out = new(LogExternalMinioClusterConfigSpec)
-		**out = **in
-	}
 	if in.S3 != nil {
 		in, out := &in.S3, &out.S3
-		*out = new(LogS3ClusterConfigSpec)
-		**out = **in
-	}
-	if in.Gcs != nil {
-		in, out := &in.Gcs, &out.Gcs
-		*out = new(LogGcsClusterConfigSpec)
+		*out = new(S3Spec)
 		**out = **in
 	}
 }
@@ -1697,16 +905,21 @@ func (in *LogsClusterConfigSpec) DeepCopy() *LogsClusterConfigSpec {
 }
 
 // DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *LogsSecretKeyClusterConfigSpec) DeepCopyInto(out *LogsSecretKeyClusterConfigSpec) {
+func (in *MemoryResource) DeepCopyInto(out *MemoryResource) {
 	*out = *in
+	if in.Limit != nil {
+		in, out := &in.Limit, &out.Limit
+		x := (*in).DeepCopy()
+		*out = &x
+	}
 }
 
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new LogsSecretKeyClusterConfigSpec.
-func (in *LogsSecretKeyClusterConfigSpec) DeepCopy() *LogsSecretKeyClusterConfigSpec {
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new MemoryResource.
+func (in *MemoryResource) DeepCopy() *MemoryResource {
 	if in == nil {
 		return nil
 	}
-	out := new(LogsSecretKeyClusterConfigSpec)
+	out := new(MemoryResource)
 	in.DeepCopyInto(out)
 	return out
 }
@@ -1727,90 +940,9 @@ func (in *MetricsClusterConfigSpec) DeepCopy() *MetricsClusterConfigSpec {
 }
 
 // DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *MinioSpec) DeepCopyInto(out *MinioSpec) {
+func (in *PodSweeperRoleConfigSpec) DeepCopyInto(out *PodSweeperRoleConfigSpec) {
 	*out = *in
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new MinioSpec.
-func (in *MinioSpec) DeepCopy() *MinioSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(MinioSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *PodSweeperSpec) DeepCopyInto(out *PodSweeperSpec) {
-	*out = *in
-	if in.RoleConfig != nil {
-		in, out := &in.RoleConfig, &out.RoleConfig
-		*out = new(RoleConfigPodSweeperSpec)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.RoleGroups != nil {
-		in, out := &in.RoleGroups, &out.RoleGroups
-		*out = make(map[string]*RoleGroupPodSweeperSpec, len(*in))
-		for key, val := range *in {
-			var outVal *RoleGroupPodSweeperSpec
-			if val == nil {
-				(*out)[key] = nil
-			} else {
-				inVal := (*in)[key]
-				in, out := &inVal, &outVal
-				*out = new(RoleGroupPodSweeperSpec)
-				(*in).DeepCopyInto(*out)
-			}
-			(*out)[key] = outVal
-		}
-	}
-	if in.Image != nil {
-		in, out := &in.Image, &out.Image
-		*out = new(ImageSpec)
-		**out = **in
-	}
-	if in.Annotations != nil {
-		in, out := &in.Annotations, &out.Annotations
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.SecurityContext != nil {
-		in, out := &in.SecurityContext, &out.SecurityContext
-		*out = new(v1.PodSecurityContext)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Labels != nil {
-		in, out := &in.Labels, &out.Labels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.NodeSelector != nil {
-		in, out := &in.NodeSelector, &out.NodeSelector
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Tolerations != nil {
-		in, out := &in.Tolerations, &out.Tolerations
-		*out = new(v1.Toleration)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Affinity != nil {
-		in, out := &in.Affinity, &out.Affinity
-		*out = new(v1.Affinity)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Resources != nil {
-		in, out := &in.Resources, &out.Resources
-		*out = new(v1.ResourceRequirements)
-		(*in).DeepCopyInto(*out)
-	}
+	in.GenericRoleConfigSpec.DeepCopyInto(&out.GenericRoleConfigSpec)
 	if in.LivenessProbe != nil {
 		in, out := &in.LivenessProbe, &out.LivenessProbe
 		*out = new(ProbeSpec)
@@ -1833,6 +965,47 @@ func (in *PodSweeperSpec) DeepCopyInto(out *PodSweeperSpec) {
 		*out = make([]v1.VolumeMount, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.TimeToDeletePods != nil {
+		in, out := &in.TimeToDeletePods, &out.TimeToDeletePods
+		*out = new(PodSweeperTimeToDeletePodsSpec)
+		**out = **in
+	}
+}
+
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new PodSweeperRoleConfigSpec.
+func (in *PodSweeperRoleConfigSpec) DeepCopy() *PodSweeperRoleConfigSpec {
+	if in == nil {
+		return nil
+	}
+	out := new(PodSweeperRoleConfigSpec)
+	in.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *PodSweeperSpec) DeepCopyInto(out *PodSweeperSpec) {
+	*out = *in
+	if in.RoleConfig != nil {
+		in, out := &in.RoleConfig, &out.RoleConfig
+		*out = new(PodSweeperRoleConfigSpec)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.RoleGroups != nil {
+		in, out := &in.RoleGroups, &out.RoleGroups
+		*out = make(map[string]*PodSweeperRoleConfigSpec, len(*in))
+		for key, val := range *in {
+			var outVal *PodSweeperRoleConfigSpec
+			if val == nil {
+				(*out)[key] = nil
+			} else {
+				inVal := (*in)[key]
+				in, out := &inVal, &outVal
+				*out = new(PodSweeperRoleConfigSpec)
+				(*in).DeepCopyInto(*out)
+			}
+			(*out)[key] = outVal
 		}
 	}
 }
@@ -1863,21 +1036,6 @@ func (in *PodSweeperTimeToDeletePodsSpec) DeepCopy() *PodSweeperTimeToDeletePods
 }
 
 // DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *PostgresSpec) DeepCopyInto(out *PostgresSpec) {
-	*out = *in
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new PostgresSpec.
-func (in *PostgresSpec) DeepCopy() *PostgresSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(PostgresSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
 func (in *ProbeSpec) DeepCopyInto(out *ProbeSpec) {
 	*out = *in
 }
@@ -1893,414 +1051,81 @@ func (in *ProbeSpec) DeepCopy() *ProbeSpec {
 }
 
 // DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *RoleConfigAirbyteBootloaderSpec) DeepCopyInto(out *RoleConfigAirbyteBootloaderSpec) {
+func (in *ResourcesSpec) DeepCopyInto(out *ResourcesSpec) {
 	*out = *in
-	if in.RunDatabaseMigrationsOnStartup != nil {
-		in, out := &in.RunDatabaseMigrationsOnStartup, &out.RunDatabaseMigrationsOnStartup
-		*out = new(bool)
-		**out = **in
+	if in.CPU != nil {
+		in, out := &in.CPU, &out.CPU
+		*out = new(CPUResource)
+		(*in).DeepCopyInto(*out)
 	}
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new RoleConfigAirbyteBootloaderSpec.
-func (in *RoleConfigAirbyteBootloaderSpec) DeepCopy() *RoleConfigAirbyteBootloaderSpec {
-	if in == nil {
-		return nil
+	if in.Memory != nil {
+		in, out := &in.Memory, &out.Memory
+		*out = new(MemoryResource)
+		(*in).DeepCopyInto(*out)
 	}
-	out := new(RoleConfigAirbyteBootloaderSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *RoleConfigConnectorBuilderServerAndAirbyteApiServerSpec) DeepCopyInto(out *RoleConfigConnectorBuilderServerAndAirbyteApiServerSpec) {
-	*out = *in
-	if in.Debug != nil {
-		in, out := &in.Debug, &out.Debug
-		*out = new(DebugSpec)
-		**out = **in
-	}
-	if in.EnvVars != nil {
-		in, out := &in.EnvVars, &out.EnvVars
-		*out = make(map[string]string, len(*in))
+	if in.Storage != nil {
+		in, out := &in.Storage, &out.Storage
+		*out = make(map[string]*StorageResource, len(*in))
 		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	in.ExtraEnv.DeepCopyInto(&out.ExtraEnv)
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new RoleConfigConnectorBuilderServerAndAirbyteApiServerSpec.
-func (in *RoleConfigConnectorBuilderServerAndAirbyteApiServerSpec) DeepCopy() *RoleConfigConnectorBuilderServerAndAirbyteApiServerSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(RoleConfigConnectorBuilderServerAndAirbyteApiServerSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *RoleConfigCronAndTemporalSpec) DeepCopyInto(out *RoleConfigCronAndTemporalSpec) {
-	*out = *in
-	if in.EnvVars != nil {
-		in, out := &in.EnvVars, &out.EnvVars
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	in.ExtraEnv.DeepCopyInto(&out.ExtraEnv)
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new RoleConfigCronAndTemporalSpec.
-func (in *RoleConfigCronAndTemporalSpec) DeepCopy() *RoleConfigCronAndTemporalSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(RoleConfigCronAndTemporalSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *RoleConfigKeycloakSpec) DeepCopyInto(out *RoleConfigKeycloakSpec) {
-	*out = *in
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new RoleConfigKeycloakSpec.
-func (in *RoleConfigKeycloakSpec) DeepCopy() *RoleConfigKeycloakSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(RoleConfigKeycloakSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *RoleConfigPodSweeperSpec) DeepCopyInto(out *RoleConfigPodSweeperSpec) {
-	*out = *in
-	if in.TimeToDeletePods != nil {
-		in, out := &in.TimeToDeletePods, &out.TimeToDeletePods
-		*out = new(PodSweeperTimeToDeletePodsSpec)
-		**out = **in
-	}
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new RoleConfigPodSweeperSpec.
-func (in *RoleConfigPodSweeperSpec) DeepCopy() *RoleConfigPodSweeperSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(RoleConfigPodSweeperSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *RoleConfigWebAppSpec) DeepCopyInto(out *RoleConfigWebAppSpec) {
-	*out = *in
-	if in.EnvVars != nil {
-		in, out := &in.EnvVars, &out.EnvVars
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	in.ExtraEnv.DeepCopyInto(&out.ExtraEnv)
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new RoleConfigWebAppSpec.
-func (in *RoleConfigWebAppSpec) DeepCopy() *RoleConfigWebAppSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(RoleConfigWebAppSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *RoleConfigWorkerSpec) DeepCopyInto(out *RoleConfigWorkerSpec) {
-	*out = *in
-	if in.ContainerOrchestrator != nil {
-		in, out := &in.ContainerOrchestrator, &out.ContainerOrchestrator
-		*out = new(ContainerOrchestratorSpec)
-		**out = **in
-	}
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new RoleConfigWorkerSpec.
-func (in *RoleConfigWorkerSpec) DeepCopy() *RoleConfigWorkerSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(RoleConfigWorkerSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *RoleGroupAirbyteApiServerSpec) DeepCopyInto(out *RoleGroupAirbyteApiServerSpec) {
-	*out = *in
-	if in.Config != nil {
-		in, out := &in.Config, &out.Config
-		*out = new(ConfigRoleGroupAirbyteApiServerSpec)
-		(*in).DeepCopyInto(*out)
-	}
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new RoleGroupAirbyteApiServerSpec.
-func (in *RoleGroupAirbyteApiServerSpec) DeepCopy() *RoleGroupAirbyteApiServerSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(RoleGroupAirbyteApiServerSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *RoleGroupAirbyteBootloaderSpec) DeepCopyInto(out *RoleGroupAirbyteBootloaderSpec) {
-	*out = *in
-	if in.Config != nil {
-		in, out := &in.Config, &out.Config
-		*out = new(ConfigRoleGroupAirbyteBootloaderSpec)
-		(*in).DeepCopyInto(*out)
-	}
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new RoleGroupAirbyteBootloaderSpec.
-func (in *RoleGroupAirbyteBootloaderSpec) DeepCopy() *RoleGroupAirbyteBootloaderSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(RoleGroupAirbyteBootloaderSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *RoleGroupConnectorBuilderServerSpec) DeepCopyInto(out *RoleGroupConnectorBuilderServerSpec) {
-	*out = *in
-	if in.Config != nil {
-		in, out := &in.Config, &out.Config
-		*out = new(ConfigRoleGroupConnectorBuilderServerSpec)
-		(*in).DeepCopyInto(*out)
-	}
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new RoleGroupConnectorBuilderServerSpec.
-func (in *RoleGroupConnectorBuilderServerSpec) DeepCopy() *RoleGroupConnectorBuilderServerSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(RoleGroupConnectorBuilderServerSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *RoleGroupCronSpec) DeepCopyInto(out *RoleGroupCronSpec) {
-	*out = *in
-	if in.Config != nil {
-		in, out := &in.Config, &out.Config
-		*out = new(ConfigRoleGroupCronSpec)
-		(*in).DeepCopyInto(*out)
-	}
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new RoleGroupCronSpec.
-func (in *RoleGroupCronSpec) DeepCopy() *RoleGroupCronSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(RoleGroupCronSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *RoleGroupKeycloakSpec) DeepCopyInto(out *RoleGroupKeycloakSpec) {
-	*out = *in
-	if in.Config != nil {
-		in, out := &in.Config, &out.Config
-		*out = new(ConfigRoleGroupKeycloakSpec)
-		(*in).DeepCopyInto(*out)
-	}
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new RoleGroupKeycloakSpec.
-func (in *RoleGroupKeycloakSpec) DeepCopy() *RoleGroupKeycloakSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(RoleGroupKeycloakSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *RoleGroupPodSweeperSpec) DeepCopyInto(out *RoleGroupPodSweeperSpec) {
-	*out = *in
-	if in.Config != nil {
-		in, out := &in.Config, &out.Config
-		*out = new(ConfigRoleGroupPodSweeperSpec)
-		(*in).DeepCopyInto(*out)
-	}
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new RoleGroupPodSweeperSpec.
-func (in *RoleGroupPodSweeperSpec) DeepCopy() *RoleGroupPodSweeperSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(RoleGroupPodSweeperSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *RoleGroupServerSpec) DeepCopyInto(out *RoleGroupServerSpec) {
-	*out = *in
-	if in.Config != nil {
-		in, out := &in.Config, &out.Config
-		*out = new(ConfigRoleGroupServerSpec)
-		(*in).DeepCopyInto(*out)
-	}
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new RoleGroupServerSpec.
-func (in *RoleGroupServerSpec) DeepCopy() *RoleGroupServerSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(RoleGroupServerSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *RoleGroupTemporalSpec) DeepCopyInto(out *RoleGroupTemporalSpec) {
-	*out = *in
-	if in.Config != nil {
-		in, out := &in.Config, &out.Config
-		*out = new(ConfigRoleGroupTemporalSpec)
-		(*in).DeepCopyInto(*out)
-	}
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new RoleGroupTemporalSpec.
-func (in *RoleGroupTemporalSpec) DeepCopy() *RoleGroupTemporalSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(RoleGroupTemporalSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *RoleGroupWebAppSpec) DeepCopyInto(out *RoleGroupWebAppSpec) {
-	*out = *in
-	if in.Config != nil {
-		in, out := &in.Config, &out.Config
-		*out = new(ConfigRoleGroupWebAppSpec)
-		(*in).DeepCopyInto(*out)
-	}
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new RoleGroupWebAppSpec.
-func (in *RoleGroupWebAppSpec) DeepCopy() *RoleGroupWebAppSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(RoleGroupWebAppSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *RoleGroupWorkerSpec) DeepCopyInto(out *RoleGroupWorkerSpec) {
-	*out = *in
-	if in.Config != nil {
-		in, out := &in.Config, &out.Config
-		*out = new(ConfigRoleGroupWorkerSpec)
-		(*in).DeepCopyInto(*out)
-	}
-}
-
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new RoleGroupWorkerSpec.
-func (in *RoleGroupWorkerSpec) DeepCopy() *RoleGroupWorkerSpec {
-	if in == nil {
-		return nil
-	}
-	out := new(RoleGroupWorkerSpec)
-	in.DeepCopyInto(out)
-	return out
-}
-
-// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *ServerSpec) DeepCopyInto(out *ServerSpec) {
-	*out = *in
-	if in.RoleGroups != nil {
-		in, out := &in.RoleGroups, &out.RoleGroups
-		*out = make(map[string]*RoleGroupServerSpec, len(*in))
-		for key, val := range *in {
-			var outVal *RoleGroupServerSpec
+			var outVal *StorageResource
 			if val == nil {
 				(*out)[key] = nil
 			} else {
 				inVal := (*in)[key]
 				in, out := &inVal, &outVal
-				*out = new(RoleGroupServerSpec)
+				*out = new(StorageResource)
 				(*in).DeepCopyInto(*out)
 			}
 			(*out)[key] = outVal
 		}
 	}
-	if in.Image != nil {
-		in, out := &in.Image, &out.Image
-		*out = new(ImageSpec)
-		**out = **in
+}
+
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new ResourcesSpec.
+func (in *ResourcesSpec) DeepCopy() *ResourcesSpec {
+	if in == nil {
+		return nil
 	}
-	if in.Resources != nil {
-		in, out := &in.Resources, &out.Resources
-		*out = new(v1.ResourceRequirements)
-		(*in).DeepCopyInto(*out)
+	out := new(ResourcesSpec)
+	in.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *S3BucketSpec) DeepCopyInto(out *S3BucketSpec) {
+	*out = *in
+}
+
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new S3BucketSpec.
+func (in *S3BucketSpec) DeepCopy() *S3BucketSpec {
+	if in == nil {
+		return nil
 	}
-	if in.Annotations != nil {
-		in, out := &in.Annotations, &out.Annotations
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
+	out := new(S3BucketSpec)
+	in.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *S3Spec) DeepCopyInto(out *S3Spec) {
+	*out = *in
+	out.S3BucketSpec = in.S3BucketSpec
+}
+
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new S3Spec.
+func (in *S3Spec) DeepCopy() *S3Spec {
+	if in == nil {
+		return nil
 	}
-	if in.Labels != nil {
-		in, out := &in.Labels, &out.Labels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.NodeSelector != nil {
-		in, out := &in.NodeSelector, &out.NodeSelector
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Tolerations != nil {
-		in, out := &in.Tolerations, &out.Tolerations
-		*out = new(v1.Toleration)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Affinity != nil {
-		in, out := &in.Affinity, &out.Affinity
-		*out = new(v1.Affinity)
-		(*in).DeepCopyInto(*out)
-	}
+	out := new(S3Spec)
+	in.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *ServerRoleConfigSpec) DeepCopyInto(out *ServerRoleConfigSpec) {
+	*out = *in
+	in.GenericRoleConfigSpec.DeepCopyInto(&out.GenericRoleConfigSpec)
 	if in.Secret != nil {
 		in, out := &in.Secret, &out.Secret
 		*out = make(map[string]string, len(*in))
@@ -2308,10 +1133,41 @@ func (in *ServerSpec) DeepCopyInto(out *ServerSpec) {
 			(*out)[key] = val
 		}
 	}
-	if in.Service != nil {
-		in, out := &in.Service, &out.Service
-		*out = new(ServiceSpec)
+}
+
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new ServerRoleConfigSpec.
+func (in *ServerRoleConfigSpec) DeepCopy() *ServerRoleConfigSpec {
+	if in == nil {
+		return nil
+	}
+	out := new(ServerRoleConfigSpec)
+	in.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *ServerSpec) DeepCopyInto(out *ServerSpec) {
+	*out = *in
+	if in.RoleConfig != nil {
+		in, out := &in.RoleConfig, &out.RoleConfig
+		*out = new(ServerRoleConfigSpec)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.RoleGroups != nil {
+		in, out := &in.RoleGroups, &out.RoleGroups
+		*out = make(map[string]*ServerRoleConfigSpec, len(*in))
+		for key, val := range *in {
+			var outVal *ServerRoleConfigSpec
+			if val == nil {
+				(*out)[key] = nil
+			} else {
+				inVal := (*in)[key]
+				in, out := &inVal, &outVal
+				*out = new(ServerRoleConfigSpec)
+				(*in).DeepCopyInto(*out)
+			}
+			(*out)[key] = outVal
+		}
 	}
 }
 
@@ -2348,16 +1204,99 @@ func (in *ServiceSpec) DeepCopy() *ServiceSpec {
 }
 
 // DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *StatusURL) DeepCopyInto(out *StatusURL) {
+func (in *StateStorageClusterConfigSpec) DeepCopyInto(out *StateStorageClusterConfigSpec) {
 	*out = *in
+	if in.S3 != nil {
+		in, out := &in.S3, &out.S3
+		*out = new(S3Spec)
+		**out = **in
+	}
 }
 
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new StatusURL.
-func (in *StatusURL) DeepCopy() *StatusURL {
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new StateStorageClusterConfigSpec.
+func (in *StateStorageClusterConfigSpec) DeepCopy() *StateStorageClusterConfigSpec {
 	if in == nil {
 		return nil
 	}
-	out := new(StatusURL)
+	out := new(StateStorageClusterConfigSpec)
+	in.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *StorageResource) DeepCopyInto(out *StorageResource) {
+	*out = *in
+	if in.Capacity != nil {
+		in, out := &in.Capacity, &out.Capacity
+		x := (*in).DeepCopy()
+		*out = &x
+	}
+}
+
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new StorageResource.
+func (in *StorageResource) DeepCopy() *StorageResource {
+	if in == nil {
+		return nil
+	}
+	out := new(StorageResource)
+	in.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *TemporalConfigSpec) DeepCopyInto(out *TemporalConfigSpec) {
+	*out = *in
+	in.BaseConfigSpec.DeepCopyInto(&out.BaseConfigSpec)
+	if in.S3 != nil {
+		in, out := &in.S3, &out.S3
+		*out = new(S3Spec)
+		**out = **in
+	}
+	if in.Database != nil {
+		in, out := &in.Database, &out.Database
+		*out = new(DatabaseSpec)
+		**out = **in
+	}
+}
+
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new TemporalConfigSpec.
+func (in *TemporalConfigSpec) DeepCopy() *TemporalConfigSpec {
+	if in == nil {
+		return nil
+	}
+	out := new(TemporalConfigSpec)
+	in.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *TemporalRoleConfigSpec) DeepCopyInto(out *TemporalRoleConfigSpec) {
+	*out = *in
+	in.BaseRoleConfigSpec.DeepCopyInto(&out.BaseRoleConfigSpec)
+	in.Config.DeepCopyInto(&out.Config)
+	if in.Secret != nil {
+		in, out := &in.Secret, &out.Secret
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
+	if in.EnvVars != nil {
+		in, out := &in.EnvVars, &out.EnvVars
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
+	in.ExtraEnv.DeepCopyInto(&out.ExtraEnv)
+}
+
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new TemporalRoleConfigSpec.
+func (in *TemporalRoleConfigSpec) DeepCopy() *TemporalRoleConfigSpec {
+	if in == nil {
+		return nil
+	}
+	out := new(TemporalRoleConfigSpec)
 	in.DeepCopyInto(out)
 	return out
 }
@@ -2367,76 +1306,23 @@ func (in *TemporalSpec) DeepCopyInto(out *TemporalSpec) {
 	*out = *in
 	if in.RoleConfig != nil {
 		in, out := &in.RoleConfig, &out.RoleConfig
-		*out = new(RoleConfigCronAndTemporalSpec)
+		*out = new(TemporalRoleConfigSpec)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.RoleGroups != nil {
 		in, out := &in.RoleGroups, &out.RoleGroups
-		*out = make(map[string]*RoleGroupTemporalSpec, len(*in))
+		*out = make(map[string]*TemporalRoleConfigSpec, len(*in))
 		for key, val := range *in {
-			var outVal *RoleGroupTemporalSpec
+			var outVal *TemporalRoleConfigSpec
 			if val == nil {
 				(*out)[key] = nil
 			} else {
 				inVal := (*in)[key]
 				in, out := &inVal, &outVal
-				*out = new(RoleGroupTemporalSpec)
+				*out = new(TemporalRoleConfigSpec)
 				(*in).DeepCopyInto(*out)
 			}
 			(*out)[key] = outVal
-		}
-	}
-	if in.Image != nil {
-		in, out := &in.Image, &out.Image
-		*out = new(ImageSpec)
-		**out = **in
-	}
-	if in.Annotations != nil {
-		in, out := &in.Annotations, &out.Annotations
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Labels != nil {
-		in, out := &in.Labels, &out.Labels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.NodeSelector != nil {
-		in, out := &in.NodeSelector, &out.NodeSelector
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Tolerations != nil {
-		in, out := &in.Tolerations, &out.Tolerations
-		*out = new(v1.Toleration)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Affinity != nil {
-		in, out := &in.Affinity, &out.Affinity
-		*out = new(v1.Affinity)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Resources != nil {
-		in, out := &in.Resources, &out.Resources
-		*out = new(v1.ResourceRequirements)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Service != nil {
-		in, out := &in.Service, &out.Service
-		*out = new(ServiceSpec)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Secret != nil {
-		in, out := &in.Secret, &out.Secret
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
 		}
 	}
 }
@@ -2452,28 +1338,41 @@ func (in *TemporalSpec) DeepCopy() *TemporalSpec {
 }
 
 // DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
-func (in *WebAppIngressSpec) DeepCopyInto(out *WebAppIngressSpec) {
+func (in *WebAppRoleConfigSpec) DeepCopyInto(out *WebAppRoleConfigSpec) {
 	*out = *in
-	if in.TLS != nil {
-		in, out := &in.TLS, &out.TLS
-		*out = new(networkingv1.IngressTLS)
+	in.IngresRoleConfigSpec.DeepCopyInto(&out.IngresRoleConfigSpec)
+	if in.Config != nil {
+		in, out := &in.Config, &out.Config
+		*out = new(BaseConfigSpec)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.Annotations != nil {
-		in, out := &in.Annotations, &out.Annotations
+	if in.Secret != nil {
+		in, out := &in.Secret, &out.Secret
+		*out = new(map[string]string)
+		if **in != nil {
+			in, out := *in, *out
+			*out = make(map[string]string, len(*in))
+			for key, val := range *in {
+				(*out)[key] = val
+			}
+		}
+	}
+	if in.EnvVars != nil {
+		in, out := &in.EnvVars, &out.EnvVars
 		*out = make(map[string]string, len(*in))
 		for key, val := range *in {
 			(*out)[key] = val
 		}
 	}
+	in.ExtraEnv.DeepCopyInto(&out.ExtraEnv)
 }
 
-// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new WebAppIngressSpec.
-func (in *WebAppIngressSpec) DeepCopy() *WebAppIngressSpec {
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new WebAppRoleConfigSpec.
+func (in *WebAppRoleConfigSpec) DeepCopy() *WebAppRoleConfigSpec {
 	if in == nil {
 		return nil
 	}
-	out := new(WebAppIngressSpec)
+	out := new(WebAppRoleConfigSpec)
 	in.DeepCopyInto(out)
 	return out
 }
@@ -2483,86 +1382,23 @@ func (in *WebAppSpec) DeepCopyInto(out *WebAppSpec) {
 	*out = *in
 	if in.RoleConfig != nil {
 		in, out := &in.RoleConfig, &out.RoleConfig
-		*out = new(RoleConfigWebAppSpec)
+		*out = new(WebAppRoleConfigSpec)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.RoleGroups != nil {
 		in, out := &in.RoleGroups, &out.RoleGroups
-		*out = make(map[string]*RoleGroupWebAppSpec, len(*in))
+		*out = make(map[string]*WebAppRoleConfigSpec, len(*in))
 		for key, val := range *in {
-			var outVal *RoleGroupWebAppSpec
+			var outVal *WebAppRoleConfigSpec
 			if val == nil {
 				(*out)[key] = nil
 			} else {
 				inVal := (*in)[key]
 				in, out := &inVal, &outVal
-				*out = new(RoleGroupWebAppSpec)
+				*out = new(WebAppRoleConfigSpec)
 				(*in).DeepCopyInto(*out)
 			}
 			(*out)[key] = outVal
-		}
-	}
-	if in.Image != nil {
-		in, out := &in.Image, &out.Image
-		*out = new(ImageSpec)
-		**out = **in
-	}
-	if in.Annotations != nil {
-		in, out := &in.Annotations, &out.Annotations
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.SecurityContext != nil {
-		in, out := &in.SecurityContext, &out.SecurityContext
-		*out = new(v1.PodSecurityContext)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Labels != nil {
-		in, out := &in.Labels, &out.Labels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Ingress != nil {
-		in, out := &in.Ingress, &out.Ingress
-		*out = new(WebAppIngressSpec)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.NodeSelector != nil {
-		in, out := &in.NodeSelector, &out.NodeSelector
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Tolerations != nil {
-		in, out := &in.Tolerations, &out.Tolerations
-		*out = new(v1.Toleration)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Affinity != nil {
-		in, out := &in.Affinity, &out.Affinity
-		*out = new(v1.Affinity)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Resources != nil {
-		in, out := &in.Resources, &out.Resources
-		*out = new(v1.ResourceRequirements)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Service != nil {
-		in, out := &in.Service, &out.Service
-		*out = new(ServiceSpec)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Secret != nil {
-		in, out := &in.Secret, &out.Secret
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
 		}
 	}
 }
@@ -2578,69 +1414,49 @@ func (in *WebAppSpec) DeepCopy() *WebAppSpec {
 }
 
 // DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *WorkerRoleConfigSpec) DeepCopyInto(out *WorkerRoleConfigSpec) {
+	*out = *in
+	in.GenericRoleConfigSpec.DeepCopyInto(&out.GenericRoleConfigSpec)
+	if in.ContainerOrchestrator != nil {
+		in, out := &in.ContainerOrchestrator, &out.ContainerOrchestrator
+		*out = new(ContainerOrchestratorSpec)
+		**out = **in
+	}
+}
+
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new WorkerRoleConfigSpec.
+func (in *WorkerRoleConfigSpec) DeepCopy() *WorkerRoleConfigSpec {
+	if in == nil {
+		return nil
+	}
+	out := new(WorkerRoleConfigSpec)
+	in.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
 func (in *WorkerSpec) DeepCopyInto(out *WorkerSpec) {
 	*out = *in
 	if in.RoleConfig != nil {
 		in, out := &in.RoleConfig, &out.RoleConfig
-		*out = new(RoleConfigWorkerSpec)
+		*out = new(WorkerRoleConfigSpec)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.RoleGroups != nil {
 		in, out := &in.RoleGroups, &out.RoleGroups
-		*out = make(map[string]*RoleGroupWorkerSpec, len(*in))
+		*out = make(map[string]*WorkerRoleConfigSpec, len(*in))
 		for key, val := range *in {
-			var outVal *RoleGroupWorkerSpec
+			var outVal *WorkerRoleConfigSpec
 			if val == nil {
 				(*out)[key] = nil
 			} else {
 				inVal := (*in)[key]
 				in, out := &inVal, &outVal
-				*out = new(RoleGroupWorkerSpec)
+				*out = new(WorkerRoleConfigSpec)
 				(*in).DeepCopyInto(*out)
 			}
 			(*out)[key] = outVal
 		}
-	}
-	if in.Image != nil {
-		in, out := &in.Image, &out.Image
-		*out = new(ImageSpec)
-		**out = **in
-	}
-	if in.Resources != nil {
-		in, out := &in.Resources, &out.Resources
-		*out = new(v1.ResourceRequirements)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Annotations != nil {
-		in, out := &in.Annotations, &out.Annotations
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Labels != nil {
-		in, out := &in.Labels, &out.Labels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.NodeSelector != nil {
-		in, out := &in.NodeSelector, &out.NodeSelector
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Tolerations != nil {
-		in, out := &in.Tolerations, &out.Tolerations
-		*out = new(v1.Toleration)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Affinity != nil {
-		in, out := &in.Affinity, &out.Affinity
-		*out = new(v1.Affinity)
-		(*in).DeepCopyInto(*out)
 	}
 }
 
