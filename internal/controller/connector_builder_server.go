@@ -1,68 +1,42 @@
 package controller
 
 import (
+	"context"
 	stackv1alpha1 "github.com/zncdata-labs/airbyte-operator/api/v1alpha1"
 	"github.com/zncdata-labs/operator-go/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strconv"
 )
 
-func (r *AirbyteReconciler) makeConnectorBuilderServerService(instance *stackv1alpha1.Airbyte) ([]*corev1.Service, error) {
-	var services []*corev1.Service
-
-	if instance.Spec.ConnectorBuilderServer.RoleGroups != nil {
-		for roleGroupName, roleGroup := range instance.Spec.ConnectorBuilderServer.RoleGroups {
-			svc, err := r.makeConnectorBuilderServerServiceForRoleGroup(instance, roleGroupName, roleGroup, r.Scheme)
-			if err != nil {
-				return nil, err
-			}
-			services = append(services, svc)
-		}
+// reconcile Airbyte connector builder server service
+func (r *AirbyteReconciler) reconcileConnectorBuilderServerService(ctx context.Context, instance *stackv1alpha1.Airbyte) error {
+	roleGroups := convertRoleGroupToRoleConfigObject(instance, ConnectorBuilderServer)
+	reconcileParams := r.createReconcileParams(ctx, roleGroups, instance, r.extractConnectorBuilderServerServiceForRoleGroup)
+	if err := reconcileParams.createOrUpdateResource(); err != nil {
+		return err
 	}
-
-	return services, nil
+	return nil
 }
 
-func (r *AirbyteReconciler) makeConnectorBuilderServerServiceForRoleGroup(instance *stackv1alpha1.Airbyte, roleGroupName string, roleGroup *stackv1alpha1.RoleGroupConnectorBuilderServerSpec, schema *runtime.Scheme) (*corev1.Service, error) {
-	labels := instance.GetLabels()
+// extract connector builder server service for role group
+func (r *AirbyteReconciler) extractConnectorBuilderServerServiceForRoleGroup(params ExtractorParams) (client.Object, error) {
+	instance := params.instance.(*stackv1alpha1.Airbyte)
+	server := instance.Spec.ConnectorBuilderServer
+	groupCfg := params.roleGroup
+	roleCfg := server.RoleConfig
+	clusterCfg := params.cluster
+	roleGroupName := params.roleGroupName
+	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg)
+	schema := params.scheme
 
-	additionalLabels := make(map[string]string)
-
-	if roleGroup.Config != nil && roleGroup.Config.MatchLabels != nil {
-		for k, v := range roleGroup.Config.MatchLabels {
-			additionalLabels[k] = v
-		}
-	}
-
-	mergedLabels := make(map[string]string)
-	for key, value := range labels {
-		mergedLabels[key] = value
-	}
-	for key, value := range additionalLabels {
-		mergedLabels[key] = value
-	}
-
-	var port int32
-	var serviceType corev1.ServiceType
-	var annotations map[string]string
-
-	if roleGroup != nil && roleGroup.Config != nil && roleGroup.Config.Service != nil {
-		port = roleGroup.Config.Service.Port
-		serviceType = roleGroup.Config.Service.Type
-		annotations = roleGroup.Config.Service.Annotations
-	} else {
-		port = instance.Spec.ConnectorBuilderServer.Service.Port
-		serviceType = instance.Spec.ConnectorBuilderServer.Service.Type
-		annotations = instance.Spec.ConnectorBuilderServer.Service.Annotations
-	}
-
+	port, serviceType, annotations := getServiceInfo(groupCfg, roleCfg, clusterCfg)
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        instance.GetNameWithSuffix("-airbyte-connector-builder-server-svc" + "-" + roleGroupName),
+			Name:        createNameForRoleGroup(instance, "connector-builder-server-svc", roleGroupName),
 			Namespace:   instance.Namespace,
 			Labels:      mergedLabels,
 			Annotations: annotations,
@@ -87,63 +61,20 @@ func (r *AirbyteReconciler) makeConnectorBuilderServerServiceForRoleGroup(instan
 	return svc, nil
 }
 
-func (r *AirbyteReconciler) makeConnectorBuilderServerDeploymentForRoleGroup(instance *stackv1alpha1.Airbyte, roleGroupName string, roleGroup *stackv1alpha1.RoleGroupConnectorBuilderServerSpec, schema *runtime.Scheme) *appsv1.Deployment {
-	labels := instance.GetLabels()
-
-	additionalLabels := make(map[string]string)
-
-	if roleGroup != nil && roleGroup.Config.MatchLabels != nil {
-		for k, v := range roleGroup.Config.MatchLabels {
-			additionalLabels[k] = v
-		}
+// merge env vars for deployment
+func mergeEnvVarsForConnectorBuilderServerDeployment(instance *stackv1alpha1.Airbyte,
+	roleGroup *stackv1alpha1.ConnectorBuilderServerRoleConfigSpec, roleGroupName string,
+	containerPorts *[]corev1.ContainerPort) []corev1.EnvVar {
+	if containerPorts == nil {
+		containerPorts = &[]corev1.ContainerPort{}
 	}
-
-	mergedLabels := make(map[string]string)
-	for key, value := range labels {
-		mergedLabels[key] = value
-	}
-	for key, value := range additionalLabels {
-		mergedLabels[key] = value
-	}
-
-	var image stackv1alpha1.ImageSpec
-	var securityContext *corev1.PodSecurityContext
-	var containerPorts []corev1.ContainerPort
-
-	if roleGroup != nil && roleGroup.Config != nil && roleGroup.Config.Image != nil {
-		image = *roleGroup.Config.Image
-	} else {
-		image = *instance.Spec.ConnectorBuilderServer.Image
-	}
-
-	if roleGroup != nil && roleGroup.Config != nil && roleGroup.Config.SecurityContext != nil {
-		securityContext = roleGroup.Config.SecurityContext
-	} else {
-		securityContext = instance.Spec.ConnectorBuilderServer.SecurityContext
-	}
-
-	if roleGroup != nil && roleGroup.Config != nil && roleGroup.Config.Service != nil && roleGroup.Config.Service.Port != 0 {
-		containerPorts = append(containerPorts, corev1.ContainerPort{
-			ContainerPort: roleGroup.Config.Service.Port,
-			Name:          "http",
-			Protocol:      corev1.ProtocolTCP,
-		})
-
-	} else {
-		containerPorts = append(containerPorts, corev1.ContainerPort{
-			ContainerPort: instance.Spec.ConnectorBuilderServer.Service.Port,
-			Name:          "http",
-			Protocol:      corev1.ProtocolTCP,
-		})
-	}
-
 	var envVars []corev1.EnvVar
 
-	if roleGroup.Config != nil && roleGroup.Config.Debug != nil {
-		if roleGroup.Config.Debug.Enabled {
+	if roleGroup.Config != nil && roleGroup.Debug != nil {
+		if roleGroup.Debug.Enabled {
 			envVars = append(envVars, corev1.EnvVar{
 				Name:  "JAVA_TOOL_OPTIONS",
-				Value: "-Xdebug -agentlib:jdwp=transport=dt_socket,address=0.0.0.0:" + strconv.FormatInt(int64(roleGroup.Config.Debug.RemoteDebugPort), 10) + ",server=y,suspend=n",
+				Value: "-Xdebug -agentlib:jdwp=transport=dt_socket,address=0.0.0.0:" + strconv.FormatInt(int64(roleGroup.Debug.RemoteDebugPort), 10) + ",server=y,suspend=n",
 			})
 		} else if instance != nil && instance.Spec.ConnectorBuilderServer != nil && instance.Spec.ConnectorBuilderServer.RoleConfig.Debug != nil {
 			if instance.Spec.ConnectorBuilderServer.RoleConfig.Debug.Enabled {
@@ -163,7 +94,7 @@ func (r *AirbyteReconciler) makeConnectorBuilderServerDeploymentForRoleGroup(ins
 					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 						Key: "AIRBYTE_VERSION",
 						LocalObjectReference: corev1.LocalObjectReference{
-							Name: instance.GetNameWithSuffix("-airbyte-env"),
+							Name: createNameForRoleGroup(instance, "env", ""),
 						},
 					},
 				},
@@ -171,17 +102,17 @@ func (r *AirbyteReconciler) makeConnectorBuilderServerDeploymentForRoleGroup(ins
 		}
 	}
 
-	if roleGroup.Config != nil && roleGroup.Config.Secret != nil {
-		envVars = appendEnvVarsFromSecret(envVars, roleGroup.Config.Secret, "connector-builder-server-secrets", roleGroupName)
-	} else if instance.Spec.ConnectorBuilderServer != nil && instance.Spec.ConnectorBuilderServer.Secret != nil {
-		envVars = appendEnvVarsFromSecret(envVars, instance.Spec.ConnectorBuilderServer.Secret, "connector-builder-server-secrets", roleGroupName)
+	if roleGroup.Config != nil && roleGroup.Secret != nil {
+		envVars = appendEnvVarsFromSecret(envVars, roleGroup.Secret, "connector-builder-server-secrets", roleGroupName)
+	} else if instance.Spec.ConnectorBuilderServer != nil && instance.Spec.ConnectorBuilderServer.RoleConfig.Secret != nil {
+		envVars = appendEnvVarsFromSecret(envVars, instance.Spec.ConnectorBuilderServer.RoleConfig.Secret, "connector-builder-server-secrets", roleGroupName)
 	}
 
 	if instance != nil && (instance.Spec.ConnectorBuilderServer != nil || instance.Spec.ClusterConfig != nil) {
 		envVarsMap := make(map[string]string)
 
-		if roleGroup.Config != nil && roleGroup.Config.EnvVars != nil {
-			for key, value := range roleGroup.Config.EnvVars {
+		if roleGroup.Config != nil && roleGroup.EnvVars != nil {
+			for key, value := range roleGroup.EnvVars {
 				envVarsMap[key] = value
 			}
 		} else if instance.Spec.ConnectorBuilderServer != nil && instance.Spec.ConnectorBuilderServer.RoleConfig.EnvVars != nil {
@@ -204,34 +135,61 @@ func (r *AirbyteReconciler) makeConnectorBuilderServerDeploymentForRoleGroup(ins
 		}
 	}
 
-	if roleGroup.Config != nil && roleGroup.Config.ExtraEnv != (corev1.EnvVar{}) {
-		envVars = append(envVars, roleGroup.Config.ExtraEnv)
-	} else if instance.Spec.ConnectorBuilderServer != nil && instance.Spec.ConnectorBuilderServer.RoleConfig.ExtraEnv != (corev1.EnvVar{}) {
-		envVars = append(envVars, instance.Spec.ConnectorBuilderServer.RoleConfig.ExtraEnv)
+	if roleGroup.Config != nil && roleGroup.ExtraEnv != nil {
+		envVars = append(envVars, *roleGroup.ExtraEnv)
+	} else if instance.Spec.ConnectorBuilderServer != nil && instance.Spec.ConnectorBuilderServer.RoleConfig.ExtraEnv != nil {
+		envVars = append(envVars, *instance.Spec.ConnectorBuilderServer.RoleConfig.ExtraEnv)
 	}
 
-	if roleGroup.Config != nil && roleGroup.Config.Debug != nil && roleGroup.Config.Debug.Enabled {
-		containerPorts = append(containerPorts, corev1.ContainerPort{
-			ContainerPort: roleGroup.Config.Debug.RemoteDebugPort,
+	if roleGroup.Config != nil && roleGroup.Debug != nil && roleGroup.Debug.Enabled {
+		*containerPorts = append(*containerPorts, corev1.ContainerPort{
+			ContainerPort: roleGroup.Debug.RemoteDebugPort,
 			Name:          "debug",
 			Protocol:      corev1.ProtocolTCP,
 		})
 	} else if instance.Spec.ConnectorBuilderServer != nil && instance.Spec.ConnectorBuilderServer.RoleConfig.Debug != nil && instance.Spec.ConnectorBuilderServer.RoleConfig.Debug.Enabled {
-		containerPorts = append(containerPorts, corev1.ContainerPort{
+		*containerPorts = append(*containerPorts, corev1.ContainerPort{
 			ContainerPort: instance.Spec.ConnectorBuilderServer.RoleConfig.Debug.RemoteDebugPort,
 			Name:          "debug",
 			Protocol:      corev1.ProtocolTCP,
 		})
 	}
+	return envVars
+}
 
+// reconcile connector builder server deployment
+func (r *AirbyteReconciler) reconcileConnectorBuilderServerDeployment(ctx context.Context,
+	instance *stackv1alpha1.Airbyte) error {
+	roleGroups := convertRoleGroupToRoleConfigObject(instance, ConnectorBuilderServer)
+	reconcileParams := r.createReconcileParams(ctx, roleGroups, instance, r.extractConnectorBuilderServerDeploymentForRoleGroup)
+	if err := reconcileParams.createOrUpdateResource(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// extract connector builder server deployment for role group
+func (r *AirbyteReconciler) extractConnectorBuilderServerDeploymentForRoleGroup(params ExtractorParams) (client.Object, error) {
+	instance := params.instance.(*stackv1alpha1.Airbyte)
+	server := instance.Spec.ConnectorBuilderServer
+	groupCfg := params.roleGroup
+	roleCfg := server.RoleConfig
+	clusterCfg := params.cluster
+	roleGroupName := params.roleGroupName
+	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg)
+	schema := params.scheme
+
+	image, securityContext, replicas, resources, containerPorts := getDeploymentInfo(groupCfg, roleCfg, clusterCfg)
+	realGroupCfg := groupCfg.(*stackv1alpha1.ConnectorBuilderServerRoleConfigSpec)
+	envVars := mergeEnvVarsForConnectorBuilderServerDeployment(instance, realGroupCfg, roleGroupName, &containerPorts)
 	dep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.GetNameWithSuffix("-connector-builder-server"),
+			Name:      createNameForRoleGroup(instance, "connector-builder-server", roleGroupName),
 			Namespace: instance.Namespace,
 			Labels:    mergedLabels,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: &roleGroup.Replicas,
+			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: mergedLabels,
 			},
@@ -240,14 +198,14 @@ func (r *AirbyteReconciler) makeConnectorBuilderServerDeploymentForRoleGroup(ins
 					Labels: mergedLabels,
 				},
 				Spec: corev1.PodSpec{
-					ServiceAccountName: instance.GetNameWithSuffix("-admin"),
+					ServiceAccountName: createNameForRoleGroup(instance, "admin", ""),
 					SecurityContext:    securityContext,
 					Containers: []corev1.Container{
 						{
 							Name:            instance.Name,
 							Image:           image.Repository + ":" + image.Tag,
 							ImagePullPolicy: image.PullPolicy,
-							Resources:       *roleGroup.Config.Resources,
+							Resources:       *resources,
 							Env:             envVars,
 							Ports:           containerPorts,
 						},
@@ -256,74 +214,58 @@ func (r *AirbyteReconciler) makeConnectorBuilderServerDeploymentForRoleGroup(ins
 			},
 		},
 	}
-	ConnectorBuilderServerScheduler(instance, dep)
+	ConnectorBuilderServerScheduler(instance, dep, groupCfg)
 
 	err := ctrl.SetControllerReference(instance, dep, schema)
 	if err != nil {
 		r.Log.Error(err, "Failed to set controller reference for deployment")
-		return nil
+		return nil, err
 	}
-	return dep
+	return dep, nil
 }
 
-func (r *AirbyteReconciler) makeConnectorBuilderServerSecret(instance *stackv1alpha1.Airbyte) ([]*corev1.Secret, error) {
-	var secrets []*corev1.Secret
-
-	if instance.Spec.ConnectorBuilderServer.RoleGroups != nil {
-		for roleGroupName, roleGroup := range instance.Spec.ConnectorBuilderServer.RoleGroups {
-			secret, err := r.makeConnectorBuilderServerSecretForRoleGroup(instance, roleGroupName, roleGroup, r.Scheme)
-			if err != nil {
-				return nil, err
-			}
-			secrets = append(secrets, secret)
-		}
+// reconcile Airbyte connector builder secret
+func (r *AirbyteReconciler) reconcileConnectorBuilderServerSecret(ctx context.Context, instance *stackv1alpha1.Airbyte) error {
+	roleGroups := convertRoleGroupToRoleConfigObject(instance, ConnectorBuilderServer)
+	reconcileParams := r.createReconcileParams(ctx, roleGroups, instance, r.extractConnectorBuilderServerSecretForRoleGroup)
+	if err := reconcileParams.createOrUpdateResource(); err != nil {
+		return err
 	}
-
-	return secrets, nil
+	return nil
 }
 
-func (r *AirbyteReconciler) makeConnectorBuilderServerSecretForRoleGroup(instance *stackv1alpha1.Airbyte, roleGroupName string, roleGroup *stackv1alpha1.RoleGroupConnectorBuilderServerSpec, schema *runtime.Scheme) (*corev1.Secret, error) {
-	labels := instance.GetLabels()
+// extract connector builder server secret for role group
+func (r *AirbyteReconciler) extractConnectorBuilderServerSecretForRoleGroup(params ExtractorParams) (client.Object, error) {
+	instance := params.instance.(*stackv1alpha1.Airbyte)
+	server := instance.Spec.ConnectorBuilderServer
+	groupCfg := params.roleGroup
+	roleCfg := server.RoleConfig
+	clusterCfg := params.cluster
+	roleGroupName := params.roleGroupName
+	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg)
+	schema := params.scheme
 
-	additionalLabels := make(map[string]string)
-
-	if roleGroup != nil && roleGroup.Config.MatchLabels != nil {
-		for k, v := range roleGroup.Config.MatchLabels {
-			additionalLabels[k] = v
-		}
+	realGroupCfg := groupCfg.(*stackv1alpha1.ConnectorBuilderServerRoleConfigSpec)
+	secretField := roleCfg.Secret
+	if realGroupCfg.Secret != nil {
+		secretField = realGroupCfg.Secret
 	}
+	data := createSecretData(secretField)
 
-	mergedLabels := make(map[string]string)
-	for key, value := range labels {
-		mergedLabels[key] = value
-	}
-	for key, value := range additionalLabels {
-		mergedLabels[key] = value
-	}
-
-	if instance.Spec.ConnectorBuilderServer.Secret != nil || roleGroup.Config.Secret != nil {
-		var data map[string][]byte
-		if roleGroup.Config != nil && roleGroup.Config.Secret != nil {
-			data = createSecretData(roleGroup.Config.Secret)
-		} else if instance.Spec.ConnectorBuilderServer.Secret != nil {
-			data = createSecretData(instance.Spec.ConnectorBuilderServer.Secret)
-		}
-
+	if data != nil {
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "connector-builder-server-secrets" + "-" + roleGroupName,
+				Name:      "server-secrets" + "-" + roleGroupName,
 				Namespace: instance.Namespace,
 				Labels:    mergedLabels,
 			},
 			Type: corev1.SecretTypeOpaque,
 			Data: data,
 		}
-
 		if err := ctrl.SetControllerReference(instance, secret, schema); err != nil {
-			return nil, errors.Wrap(err, "Failed to set controller reference for secret")
+			return nil, errors.Wrap(err, "Failed to set controller reference for service")
 		}
 		return secret, nil
 	}
-
 	return nil, nil
 }

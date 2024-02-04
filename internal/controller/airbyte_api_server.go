@@ -1,68 +1,42 @@
 package controller
 
 import (
+	"context"
 	stackv1alpha1 "github.com/zncdata-labs/airbyte-operator/api/v1alpha1"
 	"github.com/zncdata-labs/operator-go/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strconv"
 )
 
-func (r *AirbyteReconciler) makeAirbyteApiServerService(instance *stackv1alpha1.Airbyte) ([]*corev1.Service, error) {
-	var services []*corev1.Service
-
-	if instance.Spec.AirbyteApiServer.RoleGroups != nil {
-		for roleGroupName, roleGroup := range instance.Spec.AirbyteApiServer.RoleGroups {
-			svc, err := r.makeAirbyteApiServerServiceForRoleGroup(instance, roleGroupName, roleGroup, r.Scheme)
-			if err != nil {
-				return nil, err
-			}
-			services = append(services, svc)
-		}
+func (r *AirbyteReconciler) reconcileApiServerService(ctx context.Context,
+	instance *stackv1alpha1.Airbyte) error {
+	roleGroups := convertRoleGroupToRoleConfigObject(instance, ApiServer)
+	reconcileParams := r.createReconcileParams(ctx, roleGroups, instance, r.extractApiServerServiceForRoleGroup)
+	if err := reconcileParams.createOrUpdateResource(); err != nil {
+		return err
 	}
-
-	return services, nil
+	return nil
 }
 
-func (r *AirbyteReconciler) makeAirbyteApiServerServiceForRoleGroup(instance *stackv1alpha1.Airbyte, roleGroupName string, roleGroup *stackv1alpha1.RoleGroupAirbyteApiServerSpec, schema *runtime.Scheme) (*corev1.Service, error) {
-	labels := instance.GetLabels()
+// extract Api server service for role group
+func (r *AirbyteReconciler) extractApiServerServiceForRoleGroup(params ExtractorParams) (client.Object, error) {
+	instance := params.instance.(*stackv1alpha1.Airbyte)
+	server := instance.Spec.ApiServer
+	groupCfg := params.roleGroup
+	roleCfg := server.RoleConfig
+	clusterCfg := params.cluster
+	roleGroupName := params.roleGroupName
+	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg)
+	schema := params.scheme
 
-	additionalLabels := make(map[string]string)
-
-	if roleGroup.Config != nil && roleGroup.Config.MatchLabels != nil {
-		for k, v := range roleGroup.Config.MatchLabels {
-			additionalLabels[k] = v
-		}
-	}
-
-	mergedLabels := make(map[string]string)
-	for key, value := range labels {
-		mergedLabels[key] = value
-	}
-	for key, value := range additionalLabels {
-		mergedLabels[key] = value
-	}
-
-	var port int32
-	var serviceType corev1.ServiceType
-	var annotations map[string]string
-
-	if roleGroup != nil && roleGroup.Config != nil && roleGroup.Config.Service != nil {
-		port = roleGroup.Config.Service.Port
-		serviceType = roleGroup.Config.Service.Type
-		annotations = roleGroup.Config.Service.Annotations
-	} else {
-		port = instance.Spec.AirbyteApiServer.Service.Port
-		serviceType = instance.Spec.AirbyteApiServer.Service.Type
-		annotations = instance.Spec.AirbyteApiServer.Service.Annotations
-	}
-
+	port, serviceType, annotations := getServiceInfo(groupCfg, roleCfg, clusterCfg)
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        instance.GetNameWithSuffix("-airbyte-api-server-svc" + "-" + roleGroupName),
+			Name:        createNameForRoleGroup(instance, "api-server", roleGroupName),
 			Namespace:   instance.Namespace,
 			Labels:      mergedLabels,
 			Annotations: annotations,
@@ -79,6 +53,7 @@ func (r *AirbyteReconciler) makeAirbyteApiServerServiceForRoleGroup(instance *st
 			Type:     serviceType,
 		},
 	}
+
 	err := ctrl.SetControllerReference(instance, svc, schema)
 	if err != nil {
 		r.Log.Error(err, "Failed to set controller reference for service")
@@ -87,71 +62,19 @@ func (r *AirbyteReconciler) makeAirbyteApiServerServiceForRoleGroup(instance *st
 	return svc, nil
 }
 
-func (r *AirbyteReconciler) makeAirbyteApiServerDeployment(instance *stackv1alpha1.Airbyte) ([]*appsv1.Deployment, error) {
-	var deployments []*appsv1.Deployment
-
-	if instance.Spec.AirbyteApiServer.RoleGroups != nil {
-		for roleGroupName, roleGroup := range instance.Spec.AirbyteApiServer.RoleGroups {
-			dep := r.makeAirbyteApiServerDeploymentForRoleGroup(instance, roleGroupName, roleGroup, r.Scheme)
-			if dep != nil {
-				deployments = append(deployments, dep)
-			}
-		}
+// reconcile Airbyte api server deployment
+func (r *AirbyteReconciler) reconcileAirbyteApiServerDeployment(ctx context.Context,
+	instance *stackv1alpha1.Airbyte) error {
+	roleGroups := convertRoleGroupToRoleConfigObject(instance, ApiServer)
+	reconcileParams := r.createReconcileParams(ctx, roleGroups, instance, r.extractApiServerDeploymentForRoleGroup)
+	if err := reconcileParams.createOrUpdateResource(); err != nil {
+		return err
 	}
-
-	return deployments, nil
+	return nil
 }
 
-func (r *AirbyteReconciler) makeAirbyteApiServerDeploymentForRoleGroup(instance *stackv1alpha1.Airbyte, roleGroupName string, roleGroup *stackv1alpha1.RoleGroupAirbyteApiServerSpec, schema *runtime.Scheme) *appsv1.Deployment {
-	labels := instance.GetLabels()
-
-	additionalLabels := make(map[string]string)
-
-	if roleGroup != nil && roleGroup.Config.MatchLabels != nil {
-		for k, v := range roleGroup.Config.MatchLabels {
-			additionalLabels[k] = v
-		}
-	}
-
-	mergedLabels := make(map[string]string)
-	for key, value := range labels {
-		mergedLabels[key] = value
-	}
-	for key, value := range additionalLabels {
-		mergedLabels[key] = value
-	}
-
-	var image stackv1alpha1.ImageSpec
-	var securityContext *corev1.PodSecurityContext
-	var containerPorts []corev1.ContainerPort
-
-	if roleGroup != nil && roleGroup.Config != nil && roleGroup.Config.Image != nil {
-		image = *roleGroup.Config.Image
-	} else {
-		image = *instance.Spec.AirbyteApiServer.Image
-	}
-
-	if roleGroup != nil && roleGroup.Config != nil && roleGroup.Config.SecurityContext != nil {
-		securityContext = roleGroup.Config.SecurityContext
-	} else {
-		securityContext = instance.Spec.AirbyteApiServer.SecurityContext
-	}
-
-	if roleGroup != nil && roleGroup.Config != nil && roleGroup.Config.Service != nil && roleGroup.Config.Service.Port != 0 {
-		containerPorts = append(containerPorts, corev1.ContainerPort{
-			ContainerPort: roleGroup.Config.Service.Port,
-			Name:          "http",
-			Protocol:      corev1.ProtocolTCP,
-		})
-
-	} else {
-		containerPorts = append(containerPorts, corev1.ContainerPort{
-			ContainerPort: instance.Spec.AirbyteApiServer.Service.Port,
-			Name:          "http",
-			Protocol:      corev1.ProtocolTCP,
-		})
-	}
-
+func mergeEnvVarsForApiServerDeployment(instance *stackv1alpha1.Airbyte, roleGroup *stackv1alpha1.ApiServerRoleConfigSpec,
+	roleGroupName string, containerPorts *[]corev1.ContainerPort) []corev1.EnvVar {
 	envVarNames := []string{"AIRBYTE_API_HOST", "INTERNAL_API_HOST"}
 	var envVars []corev1.EnvVar
 
@@ -162,7 +85,7 @@ func (r *AirbyteReconciler) makeAirbyteApiServerDeploymentForRoleGroup(instance 
 				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 					Key: envVarName,
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: instance.GetNameWithSuffix("-airbyte-env"),
+						Name: createNameForRoleGroup(instance, "env", ""),
 					},
 				},
 			},
@@ -170,17 +93,17 @@ func (r *AirbyteReconciler) makeAirbyteApiServerDeploymentForRoleGroup(instance 
 		envVars = append(envVars, envVar)
 	}
 
-	if roleGroup.Config != nil && roleGroup.Config.Debug != nil {
-		if roleGroup.Config.Debug.Enabled {
+	if roleGroup.Config != nil && roleGroup.Debug != nil {
+		if roleGroup.Debug.Enabled {
 			envVars = append(envVars, corev1.EnvVar{
 				Name:  "JAVA_TOOL_OPTIONS",
-				Value: "-Xdebug -agentlib:jdwp=transport=dt_socket,address=0.0.0.0:" + strconv.FormatInt(int64(roleGroup.Config.Debug.RemoteDebugPort), 10) + ",server=y,suspend=n",
+				Value: "-Xdebug -agentlib:jdwp=transport=dt_socket,address=0.0.0.0:" + strconv.FormatInt(int64(roleGroup.Debug.RemoteDebugPort), 10) + ",server=y,suspend=n",
 			})
-		} else if instance != nil && instance.Spec.AirbyteApiServer != nil && instance.Spec.AirbyteApiServer.RoleConfig.Debug != nil {
-			if instance.Spec.AirbyteApiServer.RoleConfig.Debug.Enabled {
+		} else if instance != nil && instance.Spec.ApiServer != nil && instance.Spec.ApiServer.RoleConfig.Debug != nil {
+			if instance.Spec.ApiServer.RoleConfig.Debug.Enabled {
 				envVars = append(envVars, corev1.EnvVar{
 					Name:  "JAVA_TOOL_OPTIONS",
-					Value: "-Xdebug -agentlib:jdwp=transport=dt_socket,address=0.0.0.0:" + strconv.FormatInt(int64(instance.Spec.AirbyteApiServer.RoleConfig.Debug.RemoteDebugPort), 10) + ",server=y,suspend=n",
+					Value: "-Xdebug -agentlib:jdwp=transport=dt_socket,address=0.0.0.0:" + strconv.FormatInt(int64(instance.Spec.ApiServer.RoleConfig.Debug.RemoteDebugPort), 10) + ",server=y,suspend=n",
 				})
 			}
 		}
@@ -194,7 +117,7 @@ func (r *AirbyteReconciler) makeAirbyteApiServerDeploymentForRoleGroup(instance 
 					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 						Key: "AIRBYTE_VERSION",
 						LocalObjectReference: corev1.LocalObjectReference{
-							Name: instance.GetNameWithSuffix("-airbyte-env"),
+							Name: createNameForRoleGroup(instance, "env", ""),
 						},
 					},
 				},
@@ -202,21 +125,21 @@ func (r *AirbyteReconciler) makeAirbyteApiServerDeploymentForRoleGroup(instance 
 		}
 	}
 
-	if roleGroup.Config != nil && roleGroup.Config.Secret != nil {
-		envVars = appendEnvVarsFromSecret(envVars, roleGroup.Config.Secret, "server-secrets", roleGroupName)
-	} else if instance.Spec.AirbyteApiServer != nil && instance.Spec.AirbyteApiServer.Secret != nil {
-		envVars = appendEnvVarsFromSecret(envVars, instance.Spec.AirbyteApiServer.Secret, "server-secrets", roleGroupName)
+	if roleGroup.Config != nil && roleGroup.Secret != nil {
+		envVars = appendEnvVarsFromSecret(envVars, roleGroup.Secret, "server-secrets", roleGroupName)
+	} else if instance.Spec.ApiServer != nil && instance.Spec.ApiServer.RoleConfig.Secret != nil {
+		envVars = appendEnvVarsFromSecret(envVars, instance.Spec.ApiServer.RoleConfig.Secret, "server-secrets", roleGroupName)
 	}
 
-	if instance != nil && (instance.Spec.AirbyteApiServer != nil || instance.Spec.ClusterConfig != nil) {
+	if instance != nil && (instance.Spec.ApiServer != nil || instance.Spec.ClusterConfig != nil) {
 		envVarsMap := make(map[string]string)
 
-		if roleGroup.Config != nil && roleGroup.Config.EnvVars != nil {
-			for key, value := range roleGroup.Config.EnvVars {
+		if roleGroup.Config != nil && roleGroup.EnvVars != nil {
+			for key, value := range roleGroup.EnvVars {
 				envVarsMap[key] = value
 			}
-		} else if instance.Spec.AirbyteApiServer != nil && instance.Spec.AirbyteApiServer.RoleConfig.EnvVars != nil {
-			for key, value := range instance.Spec.AirbyteApiServer.RoleConfig.EnvVars {
+		} else if instance.Spec.ApiServer != nil && instance.Spec.ApiServer.RoleConfig.EnvVars != nil {
+			for key, value := range instance.Spec.ApiServer.RoleConfig.EnvVars {
 				envVarsMap[key] = value
 			}
 		}
@@ -235,34 +158,51 @@ func (r *AirbyteReconciler) makeAirbyteApiServerDeploymentForRoleGroup(instance 
 		}
 	}
 
-	if roleGroup.Config != nil && roleGroup.Config.ExtraEnv != (corev1.EnvVar{}) {
-		envVars = append(envVars, roleGroup.Config.ExtraEnv)
-	} else if instance.Spec.AirbyteApiServer != nil && instance.Spec.AirbyteApiServer.RoleConfig.ExtraEnv != (corev1.EnvVar{}) {
-		envVars = append(envVars, instance.Spec.AirbyteApiServer.RoleConfig.ExtraEnv)
+	if roleGroup.Config != nil && roleGroup.ExtraEnv != nil {
+		envVars = append(envVars, *roleGroup.ExtraEnv)
+	} else if instance.Spec.ApiServer != nil && instance.Spec.ApiServer.RoleConfig.ExtraEnv != nil {
+		envVars = append(envVars, *instance.Spec.ApiServer.RoleConfig.ExtraEnv)
 	}
 
-	if roleGroup.Config != nil && roleGroup.Config.Debug != nil && roleGroup.Config.Debug.Enabled {
-		containerPorts = append(containerPorts, corev1.ContainerPort{
-			ContainerPort: roleGroup.Config.Debug.RemoteDebugPort,
+	if roleGroup.Config != nil && roleGroup.Debug != nil && roleGroup.Debug.Enabled {
+		*containerPorts = append(*containerPorts, corev1.ContainerPort{
+			ContainerPort: roleGroup.Debug.RemoteDebugPort,
 			Name:          "debug",
 			Protocol:      corev1.ProtocolTCP,
 		})
-	} else if instance.Spec.AirbyteApiServer != nil && instance.Spec.AirbyteApiServer.RoleConfig.Debug != nil && instance.Spec.AirbyteApiServer.RoleConfig.Debug.Enabled {
-		containerPorts = append(containerPorts, corev1.ContainerPort{
-			ContainerPort: instance.Spec.AirbyteApiServer.RoleConfig.Debug.RemoteDebugPort,
+	} else if instance.Spec.ApiServer != nil && instance.Spec.ApiServer.RoleConfig.Debug != nil && instance.Spec.ApiServer.RoleConfig.Debug.Enabled {
+		*containerPorts = append(*containerPorts, corev1.ContainerPort{
+			ContainerPort: instance.Spec.ApiServer.RoleConfig.Debug.RemoteDebugPort,
 			Name:          "debug",
 			Protocol:      corev1.ProtocolTCP,
 		})
 	}
+	return envVars
+}
+
+// extract Api server deployment for role group
+func (r *AirbyteReconciler) extractApiServerDeploymentForRoleGroup(params ExtractorParams) (client.Object, error) {
+	instance := params.instance.(*stackv1alpha1.Airbyte)
+	server := instance.Spec.ApiServer
+	groupCfg := params.roleGroup
+	roleCfg := server.RoleConfig
+	clusterCfg := params.cluster
+	roleGroupName := params.roleGroupName
+	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg)
+	schema := params.scheme
+
+	realGroupCfg := groupCfg.(*stackv1alpha1.ApiServerRoleConfigSpec)
+	image, securityContext, replicas, resources, containerPorts := getDeploymentInfo(groupCfg, roleCfg, clusterCfg)
+	envVars := mergeEnvVarsForApiServerDeployment(instance, realGroupCfg, roleGroupName, &containerPorts)
 
 	dep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.GetNameWithSuffix("-airbyte-api-server" + "-" + roleGroupName),
+			Name:      createNameForRoleGroup(instance, "api-server", roleGroupName),
 			Namespace: instance.Namespace,
 			Labels:    mergedLabels,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: &roleGroup.Replicas,
+			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: mergedLabels,
 			},
@@ -271,14 +211,14 @@ func (r *AirbyteReconciler) makeAirbyteApiServerDeploymentForRoleGroup(instance 
 					Labels: mergedLabels,
 				},
 				Spec: corev1.PodSpec{
-					ServiceAccountName: instance.GetNameWithSuffix("-admin"),
+					ServiceAccountName: createNameForRoleGroup(instance, "admin", ""),
 					SecurityContext:    securityContext,
 					Containers: []corev1.Container{
 						{
 							Name:            instance.Name,
 							Image:           image.Repository + ":" + image.Tag,
 							ImagePullPolicy: image.PullPolicy,
-							Resources:       *roleGroup.Config.Resources,
+							Resources:       *resources,
 							Env:             envVars,
 							Ports:           containerPorts,
 						},
@@ -287,59 +227,47 @@ func (r *AirbyteReconciler) makeAirbyteApiServerDeploymentForRoleGroup(instance 
 			},
 		},
 	}
-	AirbyteApiServerScheduler(instance, dep)
+
+	ApiServerScheduler(instance, dep, realGroupCfg)
 
 	err := ctrl.SetControllerReference(instance, dep, schema)
 	if err != nil {
 		r.Log.Error(err, "Failed to set controller reference for deployment")
-		return nil
+		return nil, err
 	}
-	return dep
+	return dep, nil
 }
 
-func (r *AirbyteReconciler) makeAirbyteApiServerSecret(instance *stackv1alpha1.Airbyte) ([]*corev1.Secret, error) {
-	var secrets []*corev1.Secret
-
-	if instance.Spec.AirbyteApiServer.RoleGroups != nil {
-		for roleGroupName, roleGroup := range instance.Spec.AirbyteApiServer.RoleGroups {
-			secret, err := r.makeAirbyteApiServerSecretForRoleGroup(instance, roleGroupName, roleGroup, r.Scheme)
-			if err != nil {
-				return nil, err
-			}
-			secrets = append(secrets, secret)
-		}
+// reconcile Airbyte api server secret
+func (r *AirbyteReconciler) reconcileAirbyteApiServerSecret(ctx context.Context,
+	instance *stackv1alpha1.Airbyte) error {
+	roleGroups := convertRoleGroupToRoleConfigObject(instance, ApiServer)
+	reconcileParams := r.createReconcileParams(ctx, roleGroups, instance, r.extractAirbyteApiServerSecretForRoleGroup)
+	if err := reconcileParams.createOrUpdateResource(); err != nil {
+		return err
 	}
-
-	return secrets, nil
+	return nil
 }
 
-func (r *AirbyteReconciler) makeAirbyteApiServerSecretForRoleGroup(instance *stackv1alpha1.Airbyte, roleGroupName string, roleGroup *stackv1alpha1.RoleGroupAirbyteApiServerSpec, schema *runtime.Scheme) (*corev1.Secret, error) {
-	labels := instance.GetLabels()
+// extract Airbyte api server secret for role group
+func (r *AirbyteReconciler) extractAirbyteApiServerSecretForRoleGroup(params ExtractorParams) (client.Object, error) {
+	instance := params.instance.(*stackv1alpha1.Airbyte)
+	server := instance.Spec.ApiServer
+	groupCfg := params.roleGroup
+	roleCfg := server.RoleConfig
+	clusterCfg := params.cluster
+	roleGroupName := params.roleGroupName
+	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg)
+	schema := params.scheme
 
-	additionalLabels := make(map[string]string)
-
-	if roleGroup != nil && roleGroup.Config.MatchLabels != nil {
-		for k, v := range roleGroup.Config.MatchLabels {
-			additionalLabels[k] = v
-		}
+	realGroupCfg := groupCfg.(*stackv1alpha1.ApiServerRoleConfigSpec)
+	secretField := roleCfg.Secret
+	if realGroupCfg.Secret != nil {
+		secretField = realGroupCfg.Secret
 	}
+	data := createSecretData(secretField)
 
-	mergedLabels := make(map[string]string)
-	for key, value := range labels {
-		mergedLabels[key] = value
-	}
-	for key, value := range additionalLabels {
-		mergedLabels[key] = value
-	}
-
-	if instance.Spec.AirbyteApiServer.Secret != nil || roleGroup.Config.Secret != nil {
-		var data map[string][]byte
-		if roleGroup.Config != nil && roleGroup.Config.Secret != nil {
-			data = createSecretData(roleGroup.Config.Secret)
-		} else if instance.Spec.AirbyteApiServer.Secret != nil {
-			data = createSecretData(instance.Spec.AirbyteApiServer.Secret)
-		}
-
+	if data != nil {
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "server-secrets" + "-" + roleGroupName,
@@ -349,12 +277,10 @@ func (r *AirbyteReconciler) makeAirbyteApiServerSecretForRoleGroup(instance *sta
 			Type: corev1.SecretTypeOpaque,
 			Data: data,
 		}
-
 		if err := ctrl.SetControllerReference(instance, secret, schema); err != nil {
 			return nil, errors.Wrap(err, "Failed to set controller reference for service")
 		}
 		return secret, nil
 	}
-
 	return nil, nil
 }

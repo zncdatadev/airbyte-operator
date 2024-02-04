@@ -34,3 +34,8 @@ var (
 	// AddToScheme adds the types in this group-version to the given scheme.
 	AddToScheme = SchemeBuilder.AddToScheme
 )
+
+// ServerSpec defines the desired state of Server
+func init() {
+	SchemeBuilder.Register(&Airbyte{}, &AirbyteList{})
+}

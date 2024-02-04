@@ -1,67 +1,41 @@
 package controller
 
 import (
+	"context"
 	stackv1alpha1 "github.com/zncdata-labs/airbyte-operator/api/v1alpha1"
 	"github.com/zncdata-labs/operator-go/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (r *AirbyteReconciler) makeServerService(instance *stackv1alpha1.Airbyte) ([]*corev1.Service, error) {
-	var services []*corev1.Service
-
-	if instance.Spec.Server.RoleGroups != nil {
-		for roleGroupName, roleGroup := range instance.Spec.Server.RoleGroups {
-			svc, err := r.makeServerServiceForRoleGroup(instance, roleGroupName, roleGroup, r.Scheme)
-			if err != nil {
-				return nil, err
-			}
-			services = append(services, svc)
-		}
+// reconcile server service
+func (r *AirbyteReconciler) reconcileServerService(ctx context.Context, instance *stackv1alpha1.Airbyte) error {
+	roleGroups := convertRoleGroupToRoleConfigObject(instance, Server)
+	reconcileParams := r.createReconcileParams(ctx, roleGroups, instance, r.extractServerServiceForRoleGroup)
+	if err := reconcileParams.createOrUpdateResource(); err != nil {
+		return err
 	}
-
-	return services, nil
+	return nil
 }
 
-func (r *AirbyteReconciler) makeServerServiceForRoleGroup(instance *stackv1alpha1.Airbyte, roleGroupName string, roleGroup *stackv1alpha1.RoleGroupServerSpec, schema *runtime.Scheme) (*corev1.Service, error) {
-	labels := instance.GetLabels()
+// extract airbyte server service for role group
+func (r *AirbyteReconciler) extractServerServiceForRoleGroup(params ExtractorParams) (client.Object, error) {
+	instance := params.instance.(*stackv1alpha1.Airbyte)
+	server := instance.Spec.Server
+	groupCfg := params.roleGroup
+	roleCfg := server.RoleConfig
+	clusterCfg := params.cluster
+	roleGroupName := params.roleGroupName
+	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg)
+	schema := params.scheme
 
-	additionalLabels := make(map[string]string)
-
-	if roleGroup.Config != nil && roleGroup.Config.MatchLabels != nil {
-		for k, v := range roleGroup.Config.MatchLabels {
-			additionalLabels[k] = v
-		}
-	}
-
-	mergedLabels := make(map[string]string)
-	for key, value := range labels {
-		mergedLabels[key] = value
-	}
-	for key, value := range additionalLabels {
-		mergedLabels[key] = value
-	}
-
-	var port int32
-	var serviceType corev1.ServiceType
-	var annotations map[string]string
-
-	if roleGroup != nil && roleGroup.Config != nil && roleGroup.Config.Service != nil {
-		port = roleGroup.Config.Service.Port
-		serviceType = roleGroup.Config.Service.Type
-		annotations = roleGroup.Config.Service.Annotations
-	} else {
-		port = instance.Spec.Server.Service.Port
-		serviceType = instance.Spec.Server.Service.Type
-		annotations = instance.Spec.Server.Service.Annotations
-	}
-
+	port, serviceType, annotations := getServiceInfo(groupCfg, roleCfg, clusterCfg)
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        instance.GetNameWithSuffix("-airbyte-server-svc" + "-" + roleGroupName),
+			Name:        createNameForRoleGroup(instance, "server", roleGroupName),
 			Namespace:   instance.Namespace,
 			Labels:      mergedLabels,
 			Annotations: annotations,
@@ -86,71 +60,105 @@ func (r *AirbyteReconciler) makeServerServiceForRoleGroup(instance *stackv1alpha
 	return svc, nil
 }
 
-func (r *AirbyteReconciler) makeCoordinatorDeployments(instance *stackv1alpha1.Airbyte) []*appsv1.Deployment {
-	var deployments []*appsv1.Deployment
-
-	if instance.Spec.Server.RoleGroups != nil {
-		for roleGroupName, roleGroup := range instance.Spec.Server.RoleGroups {
-			dep := r.makeServerDeploymentForRoleGroup(instance, roleGroupName, roleGroup, r.Scheme)
-			if dep != nil {
-				deployments = append(deployments, dep)
-			}
-		}
+// reconcile server deployment
+func (r *AirbyteReconciler) reconcileServerDeployment(ctx context.Context, instance *stackv1alpha1.Airbyte) error {
+	roleGroups := convertRoleGroupToRoleConfigObject(instance, Server)
+	reconcileParams := r.createReconcileParams(ctx, roleGroups, instance, r.extractServerDeploymentForRoleGroup)
+	if err := reconcileParams.createOrUpdateResource(); err != nil {
+		return err
 	}
-
-	return deployments
+	return nil
 }
 
-func (r *AirbyteReconciler) makeServerDeploymentForRoleGroup(instance *stackv1alpha1.Airbyte, roleGroupName string, roleGroup *stackv1alpha1.RoleGroupServerSpec, schema *runtime.Scheme) *appsv1.Deployment {
-	labels := instance.GetLabels()
+// extract airbyte server deployment for role group
+func (r *AirbyteReconciler) extractServerDeploymentForRoleGroup(params ExtractorParams) (client.Object, error) {
+	instance := params.instance.(*stackv1alpha1.Airbyte)
+	server := instance.Spec.Server
+	groupCfg := params.roleGroup
+	roleCfg := server.RoleConfig
+	clusterCfg := params.cluster
+	roleGroupName := params.roleGroupName
+	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg)
+	schema := params.scheme
 
-	additionalLabels := make(map[string]string)
+	image, securityContext, replicas, resources, containerPorts := getDeploymentInfo(groupCfg, roleCfg, clusterCfg)
+	envVars := mergeEnvVarsForServerDeployment(instance, roleGroupName)
 
-	if roleGroup != nil && roleGroup.Config.MatchLabels != nil {
-		for k, v := range roleGroup.Config.MatchLabels {
-			additionalLabels[k] = v
-		}
+	dep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      createNameForRoleGroup(instance, "server", roleGroupName),
+			Namespace: instance.Namespace,
+			Labels:    mergedLabels,
+		},
+		Spec: appsv1.DeploymentSpec{
+
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: mergedLabels,
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: mergedLabels,
+				},
+				Spec: corev1.PodSpec{
+					ServiceAccountName: createNameForRoleGroup(instance, "admin", ""),
+					SecurityContext:    securityContext,
+					Containers: []corev1.Container{
+						{
+							Name:            instance.Name,
+							Image:           image.Repository + ":" + image.Tag,
+							ImagePullPolicy: image.PullPolicy,
+							Resources:       *resources,
+							Env:             envVars,
+							Ports:           containerPorts,
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      createNameForRoleGroup(instance, "yml-volume", roleGroupName),
+									MountPath: "/app/configs/airbyte.yml",
+									SubPath:   "fileContents",
+								},
+							},
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: createNameForRoleGroup(instance, "yml-volume", roleGroupName), // 第二个Volume的名称
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									DefaultMode: func() *int32 { mode := int32(420); return &mode }(),
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: createNameForRoleGroup(instance, "yml", ""),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
-	mergedLabels := make(map[string]string)
-	for key, value := range labels {
-		mergedLabels[key] = value
-	}
-	for key, value := range additionalLabels {
-		mergedLabels[key] = value
-	}
+	ServerScheduler(instance, dep, groupCfg)
 
-	var image stackv1alpha1.ImageSpec
-	var securityContext *corev1.PodSecurityContext
-	var containerPort int32
-
-	if roleGroup != nil && roleGroup.Config != nil && roleGroup.Config.Image != nil {
-		image = *roleGroup.Config.Image
-	} else {
-		image = *instance.Spec.Server.Image
+	err := ctrl.SetControllerReference(instance, dep, schema)
+	if err != nil {
+		r.Log.Error(err, "Failed to set controller reference for deployment")
+		return nil, err
 	}
+	return dep, nil
+}
 
-	if roleGroup != nil && roleGroup.Config != nil && roleGroup.Config.SecurityContext != nil {
-		securityContext = roleGroup.Config.SecurityContext
-	} else {
-		securityContext = instance.Spec.SecurityContext
-	}
-
-	if roleGroup != nil && roleGroup.Config != nil && roleGroup.Config.Service != nil && roleGroup.Config.Service.Port != 0 {
-		containerPort = roleGroup.Config.Service.Port
-	} else {
-		containerPort = instance.Spec.Server.Service.Port
-	}
-
+// merge env vars for airbyte server deployment
+func mergeEnvVarsForServerDeployment(instance *stackv1alpha1.Airbyte, groupName string) []corev1.EnvVar {
 	envVarNames := []string{"AIRBYTE_VERSION", "AIRBYTE_EDITION", "AUTO_DETECT_SCHEMA", "CONFIG_ROOT", "DATABASE_URL",
 		"TRACKING_STRATEGY", "WORKER_ENVIRONMENT", "WORKSPACE_ROOT", "WEBAPP_URL", "TEMPORAL_HOST", "JOB_MAIN_CONTAINER_CPU_REQUEST",
 		"JOB_MAIN_CONTAINER_CPU_LIMIT", "JOB_MAIN_CONTAINER_MEMORY_REQUEST", "JOB_MAIN_CONTAINER_MEMORY_LIMIT", "S3_LOG_BUCKET", "S3_LOG_BUCKET_REGION",
-		"S3_MINIO_ENDPOINT", "STATE_STORAGE_MINIO_BUCKET_NAME", "STATE_STORAGE_MINIO_ENDPOINT", "S3_PATH_STYLE_ACCESS", "GOOGLE_APPLICATION_CREDENTIALS",
-		"GCS_LOG_BUCKET", "CONFIGS_DATABASE_MINIMUM_FLYWAY_MIGRATION_VERSION",
+		"S3_ENDPOINT", "STATE_STORAGE_MINIO_BUCKET_NAME", "S3_PATH_STYLE_ACCESS",
+		"CONFIGS_DATABASE_MINIMUM_FLYWAY_MIGRATION_VERSION",
 		"JOBS_DATABASE_MINIMUM_FLYWAY_MIGRATION_VERSION", "WORKER_LOGS_STORAGE_TYPE", "WORKER_STATE_STORAGE_TYPE", "KEYCLOAK_INTERNAL_HOST"}
-	secretVarNames := []string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "DATABASE_PASSWORD", "DATABASE_USER", "STATE_STORAGE_MINIO_ACCESS_KEY"}
-	var envVars []corev1.EnvVar
+	secretVarNames := []string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "DATABASE_PASSWORD", "DATABASE_USER"}
 
+	var envVars []corev1.EnvVar
 	for _, envVarName := range envVarNames {
 		envVar := corev1.EnvVar{
 			Name: envVarName,
@@ -158,7 +166,7 @@ func (r *AirbyteReconciler) makeServerDeploymentForRoleGroup(instance *stackv1al
 				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 					Key: envVarName,
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: instance.GetNameWithSuffix("-airbyte-env"),
+						Name: createNameForRoleGroup(instance, "env", ""),
 					},
 				},
 			},
@@ -177,91 +185,12 @@ func (r *AirbyteReconciler) makeServerDeploymentForRoleGroup(instance *stackv1al
 				SecretKeyRef: &corev1.SecretKeySelector{
 					Key: secretVarName,
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: instance.GetNameWithSuffix("-airbyte-secrets"),
+						Name: createNameForRoleGroup(instance, "secrets", ""),
 					},
 				},
 			},
 		}
 		envVars = append(envVars, envVar)
 	}
-
-	dep := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.GetNameWithSuffix("-server" + "-" + roleGroupName),
-			Namespace: instance.Namespace,
-			Labels:    mergedLabels,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Replicas: &roleGroup.Replicas,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: mergedLabels,
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: mergedLabels,
-				},
-				Spec: corev1.PodSpec{
-					SecurityContext: securityContext,
-					Containers: []corev1.Container{
-						{
-							Name:            instance.Name,
-							Image:           image.Repository + ":" + image.Tag,
-							ImagePullPolicy: image.PullPolicy,
-							Resources:       *roleGroup.Config.Resources,
-							Env:             envVars,
-							Ports: []corev1.ContainerPort{
-								{
-									ContainerPort: containerPort,
-									Name:          "http",
-									Protocol:      "TCP",
-								},
-							},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "gcs-log-creds-volume",
-									MountPath: "/secrets/gcs-log-creds",
-									ReadOnly:  true,
-								},
-								{
-									Name:      instance.GetNameWithSuffix("-yml-volume"),
-									MountPath: "/app/configs/airbyte.yml",
-									SubPath:   "fileContents",
-								},
-							},
-						},
-					},
-					Volumes: []corev1.Volume{
-						{
-							Name: "gcs-log-creds-volume", // 第一个Volume的名称
-							VolumeSource: corev1.VolumeSource{
-								Secret: &corev1.SecretVolumeSource{
-									SecretName:  instance.GetNameWithSuffix("-gcs-log-creds"),
-									DefaultMode: func() *int32 { mode := int32(420); return &mode }(),
-								},
-							},
-						},
-						{
-							Name: instance.GetNameWithSuffix("-yml-volume"), // 第二个Volume的名称
-							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									DefaultMode: func() *int32 { mode := int32(420); return &mode }(),
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: instance.GetNameWithSuffix("-airbyte-yml"),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	ServerScheduler(instance, dep)
-
-	err := ctrl.SetControllerReference(instance, dep, schema)
-	if err != nil {
-		r.Log.Error(err, "Failed to set controller reference for deployment")
-		return nil
-	}
-	return dep
+	return envVars
 }

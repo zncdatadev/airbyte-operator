@@ -9,142 +9,424 @@ metadata:
     app.kubernetes.io/created-by: airbyte-operator
   name: airbyte
 spec:
-  global:
+  clusterConfig:
     serviceAccountName: airbyte-admin
-    logs:
-      externalMinio:
-        enabled: true
-        host: "192.168.9.30"
-        port: 31826
+    stateStorage:
       s3:
-        enabled: false
-        bucket: "airbyte-dev-logs"
+        bucket:
+          reference: "airbyte-state-storage"
+        pathStyle_access: true
+    logs:
+      s3:
+        bucket:
+          reference: "airbyte-dev-logs"
+        pathStyle_access: true
+    config:
+      database:
+        reference: database-sample
   server:
     enabled: true
-    replicas: 1
-    image:
-      repository: airbyte/server
-      tag: 0.50.30
-      pullPolicy: IfNotPresent
-    resources:
-      requests:
-        cpu: 100m
-        memory: 512Mi
-    service:
-      port: 8001
-      type: ClusterIP
+    roleConfig:
+      replicas: 1
+      image:
+        repository: airbyte/server
+        tag: 0.50.30
+        pullPolicy: IfNotPresent
+      service:
+        port: 8001
+        type: ClusterIP
+      config:
+        resources:
+          cpu:
+            max: 150m
+            min: 100m
+          memory:
+            limit: 512Mi
+    roleGroups:
+      default:
+        replicas: 1
+        config:
+          resources:
+            cpu:
+              max: 150m
+              min: 100m
+            memory:
+              limit: 512Mi
+        matchLabels:
+          app: default
+      foo:
+        replicas: 1
+        config:
+          resources:
+            cpu:
+              max: 150m
+              min: 100m
+            memory:
+              limit: 512Mi
+        matchLabels:
+          app: foo
+        securityContext:
+          runAsUser: 1000
+          fsGroup: 1000
   worker:
     enabled: true
-    debug: true
-    image:
-      repository: airbyte/worker
-      tag: 0.50.30
-      pullPolicy: IfNotPresent
-    replicas: 1
-    resources:
-      requests:
-        cpu: 100m
-        memory: 512Mi
+    #    debug: true
+    roleConfig:
+      image:
+        repository: airbyte/worker
+        tag: 0.50.30
+        pullPolicy: IfNotPresent
+      replicas: 1
+      config:
+        resources:
+          cpu:
+            max: 150m
+            min: 100m
+          memory:
+            limit: 512Mi
+    roleGroups:
+      default:
+        replicas: 1
+        config:
+          resources:
+            cpu:
+              max: 150m
+              min: 100m
+            memory:
+              limit: 512Mi
+        matchLabels:
+          app: default
+      foo:
+        replicas: 1
+        config:
+          resources:
+            cpu:
+              max: 150m
+              min: 100m
+            memory:
+              limit: 512Mi
+        matchLabels:
+          app: foo
+        securityContext:
+          runAsUser: 1000
+          fsGroup: 1000
   airbyteApiServer:
     enabled: false
-    image:
-      repository: airbyte/airbyte-api-server
-      tag: 0.50.30
-      pullPolicy: IfNotPresent
-    resources:
-      requests:
-        cpu: 100m
-        memory: 512Mi
-    replicas: 1
-    service:
-      port: 80
+    roleConfig:
+      image:
+        repository: airbyte/airbyte-api-server
+        tag: 0.50.30
+        pullPolicy: IfNotPresent
+      config:
+        resources:
+          cpu:
+            max: 150m
+            min: 100m
+          memory:
+            limit: 512Mi
+      replicas: 1
+      service:
+        port: 80
+    roleGroups:
+      default:
+        replicas: 1
+        config:
+          resources:
+            cpu:
+              max: 150m
+              min: 100m
+            memory:
+              limit: 512Mi
+        matchLabels:
+          app: default
+      foo:
+        replicas: 1
+        config:
+          resources:
+            cpu:
+              max: 150m
+              min: 100m
+            memory:
+              limit: 512Mi
+        matchLabels:
+          app: foo
   securityContext:
     runAsUser: 1000
     fsGroup: 1000
+
   airbyteBootloader:
     enabled: true
-    image:
-      repository: airbyte/airbyte-bootloader
-      tag: 0.50.30
-      pullPolicy: IfNotPresent
-    resources:
-      requests:
-        cpu: 100m
-        memory: 512Mi
+    roleConfig:
+      image:
+        repository: airbyte/airbyte-bootloader
+        tag: 0.50.30
+        pullPolicy: IfNotPresent
+      config:
+        resources:
+          cpu:
+            max: 150m
+            min: 100m
+          memory:
+            limit: 512Mi
+    roleGroups:
+      default:
+        replicas: 1
+        config:
+          resources:
+            cpu:
+              max: 150m
+              min: 100m
+            memory:
+              limit: 512Mi
+        matchLabels:
+          app: default
+      foo:
+        replicas: 1
+        config:
+          resources:
+            cpu:
+              max: 150m
+              min: 100m
+            memory:
+              limit: 512Mi
+        matchLabels:
+          app: foo
   connectorBuilderServer:
     enabled: true
-    image:
-      repository: airbyte/connector-builder-server
-      tag: 0.50.30
-      pullPolicy: IfNotPresent
-    resources:
-      requests:
-        cpu: 100m
-        memory: 512Mi
-    service:
-      port: 80
+    roleConfig:
+      image:
+        repository: airbyte/connector-builder-server
+        tag: 0.50.30
+        pullPolicy: IfNotPresent
+      config:
+        resources:
+          cpu:
+            max: 150m
+            min: 100m
+          memory:
+            limit: 512Mi
+      replicas: 1
+      service:
+        port: 80
+    roleGroups:
+      default:
+        replicas: 1
+        config:
+          resources:
+            cpu:
+              max: 150m
+              min: 100m
+            memory:
+              limit: 512Mi
+        matchLabels:
+          app: default
+      foo:
+        replicas: 1
+        config:
+          resources:
+            cpu:
+              max: 150m
+              min: 100m
+            memory:
+              limit: 512Mi
+        matchLabels:
+          app: foo
   keycloak:
     enabled: false
-    image:
-      repository: airbyte/keycloak
-      tag: 0.50.30
-      pullPolicy: IfNotPresent
-    resources:
-      requests:
-        cpu: 100m
-        memory: 512Mi
-  postgres:
-    host: "192.168.9.30"
-    port: "31011"
-    username: "airbyte"
-    password: "airbyte"
-    database: "db-airbyte"
+    roleConfig:
+      replicas: 1
+      image:
+        repository: airbyte/keycloak
+        tag: 0.50.30
+        pullPolicy: IfNotPresent
+      service:
+        port: 80
+      config:
+        resources:
+          cpu:
+            max: 150m
+            min: 100m
+          memory:
+            limit: 512Mi
+    roleGroups:
+      default:
+        replicas: 1
+        config:
+          resources:
+            cpu:
+              max: 150m
+              min: 100m
+            memory:
+              limit: 512Mi
+        matchLabels:
+          app: default
+      foo:
+        replicas: 1
+        config:
+          resources:
+            cpu:
+              max: 150m
+              min: 100m
+            memory:
+              limit: 512Mi
+        matchLabels:
+          app: foo
   temporal:
     enabled: false
-    image:
-      repository: temporalio/auto-setup
-      tag: 1.20.1
-      pullPolicy: IfNotPresent
-    resources:
-      requests:
-        cpu: 100m
-        memory: 512Mi
-    service:
-      port: 7233
+    roleConfig:
+      replicas: 1
+      image:
+        repository: temporalio/auto-setup
+        tag: 1.20.1
+        pullPolicy: IfNotPresent
+      service:
+        port: 7233
+      config:
+        resources:
+          cpu:
+            max: 150m
+            min: 100m
+          memory:
+            limit: 512Mi
+    roleGroups:
+      default:
+        replicas: 1
+        config:
+          resources:
+            cpu:
+              max: 150m
+              min: 100m
+            memory:
+              limit: 512Mi
+        matchLabels:
+          app: default
+      foo:
+        replicas: 1
+        config:
+          resources:
+            cpu:
+              max: 150m
+              min: 100m
+            memory:
+              limit: 512Mi
+        matchLabels:
+          app: foo
   webApp:
     enabled: true
-    image:
-      repository: airbyte/webapp
-      tag: 0.50.30
-      pullPolicy: IfNotPresent
-    service:
-      port: 80
-    replicas: 1
-    resources:
-      requests:
-        cpu: 100m
-        memory: 512Mi
-    ingress:
-      enabled: false
+    roleConfig:
+      replicas: 1
+      image:
+        repository: airbyte/webapp
+        tag: 0.50.30
+        pullPolicy: IfNotPresent
+      service:
+        port: 80
+      config:
+        resources:
+          cpu:
+            max: 150m
+            min: 100m
+          memory:
+            limit: 512Mi
+      ingress:
+        enabled: true
+        host: www.zncdata.net
+    roleGroups:
+      default:
+        replicas: 1
+        config:
+          resources:
+            cpu:
+              max: 150m
+              min: 100m
+            memory:
+              limit: 512Mi
+        matchLabels:
+          app: default
+      foo:
+        replicas: 1
+        config:
+          resources:
+            cpu:
+              max: 150m
+              min: 100m
+            memory:
+              limit: 512Mi
+        matchLabels:
+          app: foo
   cron:
     enabled: true
-    replicas: 1
-    image:
-      repository: airbyte/cron
-      tag: 0.50.30
-      pullPolicy: IfNotPresent
-    resources:
-      requests:
-        cpu: 100m
-        memory: 512Mi
+    roleConfig:
+      replicas: 1
+      image:
+        repository: airbyte/cron
+        tag: 0.50.30
+        pullPolicy: IfNotPresent
+      config:
+        resources:
+          cpu:
+            max: 150m
+            min: 100m
+          memory:
+            limit: 512Mi
+    roleGroups:
+      default:
+        replicas: 1
+        config:
+          resources:
+            cpu:
+              max: 150m
+              min: 100m
+            memory:
+              limit: 512Mi
+        matchLabels:
+          app: default
+      foo:
+        replicas: 1
+        config:
+          resources:
+            cpu:
+              max: 150m
+              min: 100m
+            memory:
+              limit: 512Mi
+        matchLabels:
+          app: foo
   podSweeper:
     enabled: true
-    replicas: 1
-    image:
-      repository: bitnami/kubectl
-      tag: latest
-      pullPolicy: IfNotPresent
-    resources:
-      requests:
-        cpu: 100m
-        memory: 512Mi
+    roleConfig:
+      replicas: 1
+      image:
+        repository: bitnami/kubectl
+        tag: latest
+        pullPolicy: IfNotPresent
+      config:
+        resources:
+          cpu:
+            max: 150m
+            min: 100m
+          memory:
+            limit: 512Mi
+    roleGroups:
+      default:
+        replicas: 1
+        config:
+          resources:
+            cpu:
+              max: 150m
+              min: 100m
+            memory:
+              limit: 512Mi
+        matchLabels:
+          app: default
+      foo:
+        replicas: 1
+        config:
+          resources:
+            cpu:
+              max: 150m
+              min: 100m
+            memory:
+              limit: 512Mi
+        matchLabels:
+          app: foo
