@@ -2,12 +2,14 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/zncdata-labs/airbyte-operator/api/v1alpha1"
 	"github.com/zncdata-labs/airbyte-operator/api/v1alpha1/rolegroup"
 	opgo "github.com/zncdata-labs/operator-go/pkg/apis/commons/v1alpha1"
 	"github.com/zncdata-labs/operator-go/pkg/util"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -197,6 +199,9 @@ func (r *ResourceRequest) fetchResource(obj client.Object) error {
 
 // FetchS3ByReference fetch s3 s3Bucket and  s3 connection  by s3 reference
 func (r *ResourceRequest) FetchS3ByReference(reference string) (*opgo.S3Bucket, *opgo.S3Connection, error) {
+	if reference == "" {
+		return nil, nil, errors.New("s3 reference is empty")
+	}
 	s3rsc := &opgo.S3Bucket{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: reference,
@@ -233,6 +238,15 @@ func (r *ResourceRequest) FetchS3(s3 *opgo.S3Bucket) (*opgo.S3Connection, error)
 	if err := r.fetchResource(s3); err != nil {
 		return nil, err
 	}
+	// if exist secret reference, fetch secret by reference
+	if secret, err := r.FetchSecretByReference(s3.Spec.Credential.ExistSecret); err != nil {
+		if secret != nil {
+			s3.Spec.Credential.AccessKey = string(secret.Data["ACCESS_KEY"])
+			s3.Spec.Credential.SecretKey = string(secret.Data["SECRET_KEY"])
+		}
+		return nil, err
+	}
+
 	//2 - fetch exist s3 connection by pre-fetch 's3.spec.name'
 	s3Connection := &opgo.S3Connection{
 		ObjectMeta: metav1.ObjectMeta{Name: s3.Spec.Reference},
@@ -249,6 +263,14 @@ func (r *ResourceRequest) FetchDb(database *opgo.Database) (*opgo.DatabaseConnec
 	if err := r.fetchResource(database); err != nil {
 		return nil, err
 	}
+	if secret, err := r.FetchSecretByReference(database.Spec.Credential.ExistSecret); err != nil {
+		if secret != nil {
+			database.Spec.Credential.Username = string(secret.Data["USERNAME"])
+			database.Spec.Credential.Password = string(secret.Data["PASSWORD"])
+		}
+		return nil, err
+	}
+
 	//2 - fetch exist database connection by pre-fetch 'database.spec.name'
 	dbConnection := &opgo.DatabaseConnection{
 		ObjectMeta: metav1.ObjectMeta{Name: database.Spec.Reference},
@@ -257,6 +279,26 @@ func (r *ResourceRequest) FetchDb(database *opgo.Database) (*opgo.DatabaseConnec
 		return nil, err
 	}
 	return dbConnection, nil
+}
+
+// FetchSecretByReference fetch secret by reference
+func (r *ResourceRequest) FetchSecretByReference(secretRef string) (*corev1.Secret, error) {
+	if secretRef == "" {
+		return nil, nil
+	}
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: secretRef,
+		},
+	}
+	if err := r.fetchResource(secret); err != nil {
+		return nil, err
+	}
+	data := secret.Data
+	if data == nil || len(data) == 0 {
+		return nil, fmt.Errorf("data of secret reference '%s' is empty", secretRef)
+	}
+	return secret, nil
 }
 
 // air byte role reconcile task
