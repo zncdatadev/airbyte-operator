@@ -238,7 +238,7 @@ func (r *ResourceRequest) FetchS3(s3 *opgo.S3Bucket) (*opgo.S3Connection, error)
 	if err := r.fetchResource(s3); err != nil {
 		return nil, err
 	}
-	// if exist secret reference, fetch secret by reference
+	// if exist secret reference, fetch secret by reference,and override accessKey and secretKey
 	if secret, err := r.FetchSecretByReference(s3.Spec.Credential.ExistSecret); err != nil {
 		if secret != nil {
 			s3.Spec.Credential.AccessKey = string(secret.Data["ACCESS_KEY"])
@@ -246,7 +246,6 @@ func (r *ResourceRequest) FetchS3(s3 *opgo.S3Bucket) (*opgo.S3Connection, error)
 		}
 		return nil, err
 	}
-
 	//2 - fetch exist s3 connection by pre-fetch 's3.spec.name'
 	s3Connection := &opgo.S3Connection{
 		ObjectMeta: metav1.ObjectMeta{Name: s3.Spec.Reference},
@@ -263,6 +262,7 @@ func (r *ResourceRequest) FetchDb(database *opgo.Database) (*opgo.DatabaseConnec
 	if err := r.fetchResource(database); err != nil {
 		return nil, err
 	}
+	// if exist secret reference, fetch secret by reference, and override username and password
 	if secret, err := r.FetchSecretByReference(database.Spec.Credential.ExistSecret); err != nil {
 		if secret != nil {
 			database.Spec.Credential.Username = string(secret.Data["USERNAME"])
@@ -295,7 +295,7 @@ func (r *ResourceRequest) FetchSecretByReference(secretRef string) (*corev1.Secr
 		return nil, err
 	}
 	data := secret.Data
-	if data == nil || len(data) == 0 {
+	if len(data) == 0 {
 		return nil, fmt.Errorf("data of secret reference '%s' is empty", secretRef)
 	}
 	return secret, nil
