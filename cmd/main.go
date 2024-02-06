@@ -33,6 +33,7 @@ import (
 
 	stackv1alpha1 "github.com/zncdata-labs/airbyte-operator/api/v1alpha1"
 	"github.com/zncdata-labs/airbyte-operator/internal/controller"
+	commonsv1alph1 "github.com/zncdata-labs/operator-go/pkg/apis/commons/v1alpha1"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -46,6 +47,8 @@ func init() {
 
 	utilruntime.Must(stackv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
+
+	utilruntime.Must(commonsv1alph1.AddToScheme(scheme))
 }
 
 func main() {
@@ -67,8 +70,6 @@ func main() {
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
-		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "d57b222e.zncdata.net",
@@ -92,6 +93,7 @@ func main() {
 	if err = (&controller.AirbyteReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
+		Log:    setupLog,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Airbyte")
 		os.Exit(1)

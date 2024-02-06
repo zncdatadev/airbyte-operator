@@ -19,17 +19,16 @@ package controller
 import (
 	"context"
 	"github.com/go-logr/logr"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/util/retry"
-
 	stackv1alpha1 "github.com/zncdata-labs/airbyte-operator/api/v1alpha1"
+	"github.com/zncdata-labs/operator-go/pkg/status"
+	"github.com/zncdata-labs/operator-go/pkg/util"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// AirbyteReconciler reconciles a Airbyte object
+// AirbyteReconciler reconciles an Airbyte object
 type AirbyteReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
@@ -57,105 +56,72 @@ type AirbyteReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
 func (r *AirbyteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-
 	r.Log.Info("Reconciling instance")
 
-	airbyte := &stackv1alpha1.Airbyte{}
-
-	if err := r.Get(ctx, req.NamespacedName, airbyte); err != nil {
-		if client.IgnoreNotFound(err) != nil {
-			r.Log.Error(err, "unable to fetch Airbyte")
-			return ctrl.Result{}, err
-		}
-		r.Log.Info("Airbyte resource not found. Ignoring since object must be deleted")
-		return ctrl.Result{}, nil
-	}
-
-	// Get the status condition, if it exists and its generation is not the
-	//same as the Airbyte's generation, reset the status conditions
-	readCondition := apimeta.FindStatusCondition(airbyte.Status.Conditions, stackv1alpha1.ConditionTypeProgressing)
-	if readCondition == nil || readCondition.ObservedGeneration != airbyte.GetGeneration() {
-		airbyte.InitStatusConditions()
-
-		if err := r.UpdateStatus(ctx, airbyte); err != nil {
-			return ctrl.Result{}, err
-		}
-	}
-
-	r.Log.Info("Airbyte found", "Name", airbyte.Name)
-
-	if err := r.reconcileDeployment(ctx, airbyte); err != nil {
-		r.Log.Error(err, "unable to reconcile Deployment")
+	instance, err := r.getAirbyteInstance(ctx, req)
+	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if err := r.reconcileService(ctx, airbyte); err != nil {
-		r.Log.Error(err, "unable to reconcile Service")
+	if err := r.handleStatusConditions(ctx, instance); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if err := r.reconcileSecret(ctx, airbyte); err != nil {
-		r.Log.Error(err, "unable to reconcile Secret")
-		return ctrl.Result{}, err
-	}
-
-	if err := r.reconcileConfigMap(ctx, airbyte); err != nil {
-		r.Log.Error(err, "unable to reconcile ConfigMap")
-		return ctrl.Result{}, err
-	}
-
-	if err := r.reconcileServiceAccount(ctx, airbyte); err != nil {
-		r.Log.Error(err, "unable to reconcile ServiceAccount")
-		return ctrl.Result{}, err
-	}
-
-	if err := r.reconcileRole(ctx, airbyte); err != nil {
-		r.Log.Error(err, "unable to reconcile Role")
-		return ctrl.Result{}, err
-	}
-
-	if err := r.reconcileRoleBinding(ctx, airbyte); err != nil {
-		r.Log.Error(err, "unable to reconcile RoleBinding")
-		return ctrl.Result{}, err
-	}
-
-	if err := r.reconcileIngress(ctx, airbyte); err != nil {
-		r.Log.Error(err, "unable to reconcile Ingress")
-		return ctrl.Result{}, err
-	}
-
-	airbyte.SetStatusCondition(metav1.Condition{
-		Type:               stackv1alpha1.ConditionTypeAvailable,
-		Status:             metav1.ConditionTrue,
-		Reason:             stackv1alpha1.ConditionReasonRunning,
-		Message:            "Airbyte is running",
-		ObservedGeneration: airbyte.GetGeneration(),
-	})
-
-	if err := r.UpdateStatus(ctx, airbyte); err != nil {
+	if err := r.executeReconcileTasks(ctx, instance); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	r.Log.Info("Successfully reconciled Airbyte")
 	return ctrl.Result{}, nil
-
 }
 
-// UpdateStatus updates the status of the Airbyte resource
-// https://stackoverflow.com/questions/76388004/k8s-controller-update-status-and-condition
-func (r *AirbyteReconciler) UpdateStatus(ctx context.Context, instance *stackv1alpha1.Airbyte) error {
-	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		return r.Status().Update(ctx, instance)
-		//return r.Status().Patch(ctx, instance, client.MergeFrom(instance))
-	})
+func (r *AirbyteReconciler) getAirbyteInstance(ctx context.Context, req ctrl.Request) (*stackv1alpha1.Airbyte, error) {
+	instance := &stackv1alpha1.Airbyte{}
 
-	if retryErr != nil {
-		r.Log.Error(retryErr, "Failed to update vfm status after retries")
-		return retryErr
+	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			r.Log.Error(err, "unable to fetch Airbyte")
+			return nil, err
+		}
+		r.Log.Info("Airbyte resource not found. Ignoring since object must be deleted")
+		return nil, nil
 	}
 
-	r.Log.V(1).Info("Successfully patched object status")
+	r.Log.Info("Airbyte found", "Name", instance.Name)
+	return instance, nil
+}
+
+func (r *AirbyteReconciler) handleStatusConditions(ctx context.Context, instance *stackv1alpha1.Airbyte) error {
+	readCondition := apimeta.FindStatusCondition(instance.Status.Conditions, status.ConditionTypeProgressing)
+	if readCondition == nil || readCondition.ObservedGeneration != instance.GetGeneration() {
+		instance.InitStatusConditions()
+		if err := util.UpdateStatus(ctx, r.Client, instance); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+func (r *AirbyteReconciler) executeReconcileTasks(ctx context.Context, instance *stackv1alpha1.Airbyte) error {
+	tasks := []ReconcileTask[*stackv1alpha1.Airbyte]{
+		{resourceName: "Secret", reconcileFunc: r.reconcileSecret},
+		{resourceName: "ConfigMap", reconcileFunc: r.reconcileConfigMap},
+		{resourceName: "ServiceAccount", reconcileFunc: r.reconcileServiceAccount},
+		{resourceName: "Role", reconcileFunc: r.reconcileRole},
+		{resourceName: "RoleBinding", reconcileFunc: r.reconcileRoleBinding},
+		{resourceName: "Deployment", reconcileFunc: r.reconcileDeployment},
+		{resourceName: "Service", reconcileFunc: r.reconcileService},
+		{resourceName: "Ingress", reconcileFunc: r.reconcileIngress},
+	}
+	reconcileParams := TaskReconcilePara[*stackv1alpha1.Airbyte]{
+		ctx:            ctx,
+		instance:       instance,
+		log:            r.Log,
+		client:         r.Client,
+		instanceStatus: &instance.Status,
+		serverName:     "Airbyte",
+	}
+	return ReconcileTasks(&tasks, reconcileParams)
 }
 
 // SetupWithManager sets up the controller with the Manager.

@@ -1,215 +1,114 @@
 package controller
 
 import (
+	"context"
 	"encoding/base64"
 	stackv1alpha1 "github.com/zncdata-labs/airbyte-operator/api/v1alpha1"
+	opgo "github.com/zncdata-labs/operator-go/pkg/apis/commons/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strconv"
 )
 
-func (r *AirbyteReconciler) makeTemporalService(instance *stackv1alpha1.Airbyte, schema *runtime.Scheme) *corev1.Service {
-	labels := instance.GetLabels()
+// reconcile temporal service
+func (r *AirbyteReconciler) reconcileTemporalService(ctx context.Context, instance *stackv1alpha1.Airbyte) error {
+	roleGroups := convertRoleGroupToRoleConfigObject(instance, Temporal)
+	reconcileParams := r.createReconcileParams(ctx, roleGroups, instance, r.extractTemporalServiceForRoleGroup)
+	if err := reconcileParams.createOrUpdateResource(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// extract temporal service for role group
+func (r *AirbyteReconciler) extractTemporalServiceForRoleGroup(params ExtractorParams) (client.Object, error) {
+	instance := params.instance.(*stackv1alpha1.Airbyte)
+	temporal := instance.Spec.Temporal
+	groupCfg := params.roleGroup
+	roleCfg := temporal.RoleConfig
+	clusterCfg := params.cluster
+	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg)
+	schema := params.scheme
+	port, serviceType, annotations := getServiceInfo(groupCfg, roleCfg, clusterCfg)
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        instance.GetNameWithSuffix("-temporal"),
+			Name:        createNameForRoleGroup(instance, "temporal", params.roleGroupName),
 			Namespace:   instance.Namespace,
-			Labels:      labels,
-			Annotations: instance.Spec.Temporal.Service.Annotations,
+			Labels:      mergedLabels,
+			Annotations: annotations,
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
 				{
-					Port:     instance.Spec.Temporal.Service.Port,
+					Port:     port,
 					Name:     "http",
 					Protocol: "TCP",
 				},
 			},
-			Selector: labels,
-			Type:     instance.Spec.Temporal.Service.Type,
+			Selector: mergedLabels,
+			Type:     serviceType,
 		},
 	}
+
 	err := ctrl.SetControllerReference(instance, svc, schema)
 	if err != nil {
 		r.Log.Error(err, "Failed to set controller reference for service")
-		return nil
+		return nil, err
 	}
-	return svc
+	return svc, nil
 }
 
-func (r *AirbyteReconciler) makeTemporalDeployment(instance *stackv1alpha1.Airbyte, schema *runtime.Scheme) *appsv1.Deployment {
-	labels := instance.GetLabels()
-
-	var envVars []corev1.EnvVar
-
-	if instance != nil && instance.Spec.Global != nil {
-		if instance.Spec.Global.DeploymentMode == "oss" {
-
-			envVars = append(envVars, corev1.EnvVar{
-				Name:  "AUTO_SETUP",
-				Value: "true",
-			}, corev1.EnvVar{
-				Name:  "DB",
-				Value: "postgresql",
-			})
-
-			if instance.Spec.Global.Database != nil {
-				if instance.Spec.Global.Database.Port != 0 {
-					envVars = append(envVars, corev1.EnvVar{
-						Name:  "DB_PORT",
-						Value: strconv.Itoa(int(instance.Spec.Global.Database.Port)),
-					})
-				}
-			} else if instance.Spec.Global.ConfigMapName != "" {
-				envVars = append(envVars, corev1.EnvVar{
-					Name: "DB_PORT",
-					ValueFrom: &corev1.EnvVarSource{
-						ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: instance.Spec.Global.ConfigMapName,
-							},
-							Key: "DATABASE_PORT",
-						},
-					},
-				})
-			} else {
-				envVars = append(envVars, corev1.EnvVar{
-					Name: "DB_PORT",
-					ValueFrom: &corev1.EnvVarSource{
-						ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: instance.GetNameWithSuffix("-airbyte-env"),
-							},
-							Key: "DATABASE_PORT",
-						},
-					},
-				})
-			}
-
-			envVars = append(envVars, corev1.EnvVar{
-				Name: "POSTGRES_USER",
-				ValueFrom: &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						Key: "DATABASE_USER",
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: instance.GetNameWithSuffix("-airbyte-secrets"),
-						},
-					},
-				},
-			})
-
-			envVars = append(envVars, corev1.EnvVar{
-				Name: "POSTGRES_PWD",
-				ValueFrom: &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						Key: "DATABASE_PASSWORD",
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: instance.GetNameWithSuffix("-airbyte-secrets"),
-						},
-					},
-				},
-			})
-
-			configMapName := instance.GetNameWithSuffix("-airbyte-env")
-			if instance.Spec.Global.ConfigMapName != "" {
-				configMapName = instance.Spec.Global.ConfigMapName
-			}
-
-			envVars = append(envVars, corev1.EnvVar{
-				Name: "POSTGRES_SEEDS",
-				ValueFrom: &corev1.EnvVarSource{
-					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-						Key: "DATABASE_HOST",
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: configMapName,
-						},
-					},
-				},
-			})
-
-			envVars = append(envVars, corev1.EnvVar{
-				Name:  "DYNAMIC_CONFIG_FILE_PATH",
-				Value: "config/dynamicconfig/development.yaml",
-			})
-		}
+// reconcile temporal deployment
+func (r *AirbyteReconciler) reconcileTemporalDeployment(ctx context.Context, instance *stackv1alpha1.Airbyte) error {
+	roleGroups := convertRoleGroupToRoleConfigObject(instance, Temporal)
+	reconcileParams := r.createReconcileParams(ctx, roleGroups, instance, r.extractTemporalDeploymentForRoleGroup)
+	if err := reconcileParams.createOrUpdateResource(); err != nil {
+		return err
 	}
+	return nil
+}
 
-	if instance != nil && instance.Spec.Temporal != nil && instance.Spec.Temporal.Secret != nil {
-		for key := range instance.Spec.Temporal.Secret {
-			envVars = append(envVars, corev1.EnvVar{
-				Name: key,
-				ValueFrom: &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "temporal-secrets",
-						},
-						Key: key,
-					},
-				},
-			})
-		}
+// extract temporal deployment for role group
+func (r *AirbyteReconciler) extractTemporalDeploymentForRoleGroup(params ExtractorParams) (client.Object, error) {
+	instance := params.instance.(*stackv1alpha1.Airbyte)
+	temporal := instance.Spec.Temporal
+	groupCfg := params.roleGroup
+	roleCfg := temporal.RoleConfig
+	clusterCfg := params.cluster
+	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg)
+	schema := params.scheme
+	image, securityContext, replicas, resources, containerPorts := getDeploymentInfo(groupCfg, roleCfg, clusterCfg)
+	envVars, err := r.mergeEnvVarsForTemporalDeployment(instance, params.ctx)
+	if err != nil {
+		return nil, err
 	}
-
-	if instance != nil && (instance.Spec.Temporal != nil || instance.Spec.Global != nil) {
-		envVarsMap := make(map[string]string)
-
-		if instance.Spec.Temporal != nil && instance.Spec.Temporal.EnvVars != nil {
-			for key, value := range instance.Spec.Temporal.EnvVars {
-				envVarsMap[key] = value
-			}
-		}
-
-		if instance.Spec.Global != nil && instance.Spec.Global.EnvVars != nil {
-			for key, value := range instance.Spec.Global.EnvVars {
-				envVarsMap[key] = value
-			}
-		}
-
-		for key, value := range envVarsMap {
-			envVars = append(envVars, corev1.EnvVar{
-				Name:  key,
-				Value: value,
-			})
-		}
-	}
-
-	if instance != nil && instance.Spec.Temporal != nil && instance.Spec.Temporal.ExtraEnv != (corev1.EnvVar{}) {
-		envVars = append(envVars, instance.Spec.Temporal.ExtraEnv)
-	}
-
-	containerPorts := []corev1.ContainerPort{
-		{
-			ContainerPort: 7233,
-		},
-	}
-
 	dep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.GetNameWithSuffix("-temporal"),
+			Name:      createNameForRoleGroup(instance, "temporal", params.roleGroupName),
 			Namespace: instance.Namespace,
-			Labels:    labels,
+			Labels:    mergedLabels,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: &instance.Spec.Temporal.Replicas,
+			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: labels,
+				MatchLabels: mergedLabels,
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
+					Labels: mergedLabels,
 				},
 				Spec: corev1.PodSpec{
-					ServiceAccountName: instance.GetNameWithSuffix("-admin"),
-					SecurityContext:    instance.Spec.SecurityContext,
+					ServiceAccountName: createNameForRoleGroup(instance, "admin", ""),
+					SecurityContext:    securityContext,
 					Containers: []corev1.Container{
 						{
 							Name:            instance.Name,
-							Image:           instance.Spec.Temporal.Image.Repository + ":" + instance.Spec.Temporal.Image.Tag,
-							ImagePullPolicy: instance.Spec.Temporal.Image.PullPolicy,
-							Resources:       *instance.Spec.Temporal.Resources,
+							Image:           image.Repository + ":" + image.Tag,
+							ImagePullPolicy: image.PullPolicy,
+							Resources:       *resources,
 							Env:             envVars,
 							Ports:           containerPorts,
 							VolumeMounts: []corev1.VolumeMount{
@@ -226,7 +125,7 @@ func (r *AirbyteReconciler) makeTemporalDeployment(instance *stackv1alpha1.Airby
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									LocalObjectReference: corev1.LocalObjectReference{
-										Name: instance.GetNameWithSuffix("-tempora-dynamicconfig"),
+										Name: createNameForRoleGroup(instance, "tempora-dynamicconfig", params.roleGroupName),
 									},
 									Items: []corev1.KeyToPath{
 										{
@@ -242,150 +141,167 @@ func (r *AirbyteReconciler) makeTemporalDeployment(instance *stackv1alpha1.Airby
 			},
 		},
 	}
-	ConnectorBuilderServerScheduler(instance, dep)
+	ConnectorBuilderServerScheduler(instance, dep, groupCfg)
 
-	err := ctrl.SetControllerReference(instance, dep, schema)
+	err = ctrl.SetControllerReference(instance, dep, schema)
 	if err != nil {
 		r.Log.Error(err, "Failed to set controller reference for deployment")
-		return nil
+		return nil, err
 	}
-	return dep
+	return dep, nil
 }
 
-func (r *AirbyteReconciler) makeTemporalDynamicconfigConfigMap(instance *stackv1alpha1.Airbyte, schema *runtime.Scheme) *corev1.ConfigMap {
-	labels := instance.GetLabels()
+// merge env vars for temporal deployment
+func (r *AirbyteReconciler) mergeEnvVarsForTemporalDeployment(instance *stackv1alpha1.Airbyte,
+	ctx context.Context) ([]corev1.EnvVar, error) {
+	var envVars []corev1.EnvVar
+	if instance != nil && instance.Spec.ClusterConfig != nil {
+		if instance.Spec.ClusterConfig.DeploymentMode == "oss" {
+			// db envs
+			envVars = append(envVars, corev1.EnvVar{
+				Name:  "AUTO_SETUP",
+				Value: "true",
+			}, corev1.EnvVar{
+				Name:  "DB",
+				Value: "postgresql",
+			})
+
+			db := instance.Spec.ClusterConfig.Config.Database
+			if db != nil {
+				dbrsc := &opgo.Database{
+					ObjectMeta: metav1.ObjectMeta{Name: db.Reference},
+				}
+				resourceReq := &ResourceRequest{
+					Ctx:       ctx,
+					Client:    r.Client,
+					Namespace: instance.Namespace,
+					Log:       r.Log,
+				}
+				dbConnection, err := resourceReq.FetchDb(dbrsc)
+				if err != nil {
+					return nil, err
+				}
+				pg := dbConnection.Spec.Provider.Postgres
+				pgEnvs := []corev1.EnvVar{
+					{
+						Name:  "DB_PORT",
+						Value: strconv.Itoa(pg.Port),
+					},
+					{
+						Name:  "POSTGRES_USER",
+						Value: dbrsc.Spec.Credential.Username,
+					},
+					{
+						Name:  "POSTGRES_PWD",
+						Value: dbrsc.Spec.Credential.Password,
+					},
+					{
+						Name:  "POSTGRES_SEEDS",
+						Value: pg.Host,
+					},
+				}
+				envVars = append(envVars, pgEnvs...)
+			}
+			envVars = append(envVars, corev1.EnvVar{
+				Name:  "DYNAMIC_CONFIG_FILE_PATH",
+				Value: "config/dynamicconfig/development.yaml",
+			})
+		}
+	}
+
+	// temporal secret envs
+	if instance != nil && instance.Spec.Temporal != nil && instance.Spec.Temporal.RoleConfig.Secret != nil {
+		for key := range instance.Spec.Temporal.RoleConfig.Secret {
+			envVars = append(envVars, corev1.EnvVar{
+				Name: key,
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "temporal-secrets",
+						},
+						Key: key,
+					},
+				},
+			})
+		}
+	}
+	// merge env vars
+	if instance != nil && (instance.Spec.Temporal != nil || instance.Spec.ClusterConfig != nil) {
+		envVarsMap := make(map[string]string)
+		if instance.Spec.Temporal != nil && instance.Spec.Temporal.RoleConfig.EnvVars != nil {
+			for key, value := range instance.Spec.Temporal.RoleConfig.EnvVars {
+				envVarsMap[key] = value
+			}
+		}
+		if instance.Spec.ClusterConfig != nil && instance.Spec.ClusterConfig.EnvVars != nil {
+			for key, value := range instance.Spec.ClusterConfig.EnvVars {
+				envVarsMap[key] = value
+			}
+		}
+		for key, value := range envVarsMap {
+			envVars = append(envVars, corev1.EnvVar{
+				Name:  key,
+				Value: value,
+			})
+		}
+	}
+	// extra env
+	if instance != nil && instance.Spec.Temporal != nil && instance.Spec.Temporal.RoleConfig.ExtraEnv != (corev1.EnvVar{}) {
+		envVars = append(envVars, instance.Spec.Temporal.RoleConfig.ExtraEnv)
+	}
+	return envVars, nil
+}
+
+// reconcile temporal configmap
+func (r *AirbyteReconciler) reconcileTemporalConfigMap(ctx context.Context, instance *stackv1alpha1.Airbyte) error {
+	roleGroups := convertRoleGroupToRoleConfigObject(instance, Temporal)
+	reconcileParams := r.createReconcileParams(ctx, roleGroups, instance, r.extractTemporalDynamicConfigConfigMap)
+	if err := reconcileParams.createOrUpdateResource(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// extract temporal dynamic config configmap
+func (r *AirbyteReconciler) extractTemporalDynamicConfigConfigMap(params ExtractorParams) (client.Object, error) {
+	instance := params.instance.(*stackv1alpha1.Airbyte)
+	mergedLabels := r.mergeLabels(params.roleGroup, instance.GetLabels(), params.cluster)
 	configMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.GetNameWithSuffix("-tempora-dynamicconfig"),
+			Name:      createNameForRoleGroup(instance, "tempora-dynamicconfig", params.roleGroupName),
 			Namespace: instance.Namespace,
-			Labels:    labels,
+			Labels:    mergedLabels,
 		},
 		Data: map[string]string{
-			"development.yaml": `
-# when modifying, remember to update the docker-compose version of this file in temporal/dynamicconfig/development.yaml
-frontend.enableClientVersionCheck:
-  - value: true
-    constraints: {}
-history.persistenceMaxQPS:
-  - value: 3000
-    constraints: {}
-frontend.persistenceMaxQPS:
-  - value: 3000
-    constraints: {}
-frontend.historyMgrNumConns:
-  - value: 30
-    constraints: {}
-frontend.throttledLogRPS:
-  - value: 20
-    constraints: {}
-history.historyMgrNumConns:
-  - value: 50
-    constraints: {}
-system.advancedVisibilityWritingMode:
-  - value: "off"
-    constraints: {}
-history.defaultActivityRetryPolicy:
-  - value:
-      InitialIntervalInSeconds: 1
-      MaximumIntervalCoefficient: 100.0
-      BackoffCoefficient: 2.0
-      MaximumAttempts: 0
-history.defaultWorkflowRetryPolicy:
-  - value:
-      InitialIntervalInSeconds: 1
-      MaximumIntervalCoefficient: 100.0
-      BackoffCoefficient: 2.0
-      MaximumAttempts: 0
-# Limit for responses. This mostly impacts discovery jobs since they have the largest responses.
-limit.blobSize.error:
-  - value: 15728640 # 15MB
-    constraints: {}
-limit.blobSize.warn:
-  - value: 10485760 # 10MB
-    constraints: {}
-`,
+			"development.yaml": temporalDynamicConfigDeploymentCfg,
 		},
 	}
-	err := ctrl.SetControllerReference(instance, configMap, schema)
+	err := ctrl.SetControllerReference(instance, configMap, params.scheme)
 	if err != nil {
-		r.Log.Error(err, "Failed to set controller reference for airbyte-pod-sweeper-sweep-pod-script configmap")
-		return nil
+		return nil, err
 	}
-	return configMap
+	return configMap, nil
 }
 
-func (r *AirbyteReconciler) makeSecret(instance *stackv1alpha1.Airbyte) []*corev1.Secret {
-	var secrets []*corev1.Secret
-	labels := instance.GetLabels()
-	if instance.Spec.Global != nil && instance.Spec.Global.Logs != nil && instance.Spec.Global.Logs.Gcs != nil {
-		secret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      instance.GetNameWithSuffix("-gcs-log-creds"),
-				Namespace: instance.Namespace,
-				Labels:    labels,
-			},
-			Type: corev1.SecretTypeOpaque,
-			Data: map[string][]byte{
-				"gcp.json": []byte(instance.Spec.Global.Logs.Gcs.CredentialsJson),
-			},
-		}
-		secrets = append(secrets, secret)
-
+// reconcile temporal secrets
+func (r *AirbyteReconciler) reconcileTemporalSecret(ctx context.Context, instance *stackv1alpha1.Airbyte) error {
+	roleGroups := convertRoleGroupToRoleConfigObject(instance, Temporal)
+	reconcileParams := r.createReconcileParams(ctx, roleGroups, instance, r.extractTemporalSecret)
+	if err := reconcileParams.createOrUpdateResource(); err != nil {
+		return err
 	}
+	return nil
+}
 
-	if instance.Spec.Global != nil && instance.Spec.Global.Logs != nil {
-		// Create a Data map to hold the secret data
-		data := make(map[string][]byte)
-
-		data["AWS_ACCESS_KEY_ID"] = []byte("")
-		if instance.Spec.Global.Logs.AccessKey != nil {
-			data["AWS_ACCESS_KEY_ID"] = []byte(instance.Spec.Global.Logs.AccessKey.Password)
-		}
-
-		data["AWS_SECRET_ACCESS_KEY"] = []byte("")
-		if instance.Spec.Global.Logs.SecretKey != nil {
-			data["AWS_SECRET_ACCESS_KEY"] = []byte(instance.Spec.Global.Logs.SecretKey.Password)
-		}
-
-		data["DATABASE_PASSWORD"] = []byte("")
-		if instance.Spec.Postgres != nil {
-			data["DATABASE_PASSWORD"] = []byte(instance.Spec.Postgres.Password)
-		}
-
-		data["DATABASE_USER"] = []byte("")
-		if instance.Spec.Postgres != nil {
-			data["DATABASE_USER"] = []byte(instance.Spec.Postgres.UserName)
-		}
-
-		data["STATE_STORAGE_MINIO_ACCESS_KEY"] = []byte("")
-		if instance.Spec.Minio != nil {
-			data["STATE_STORAGE_MINIO_ACCESS_KEY"] = []byte(instance.Spec.Minio.RootUser)
-		}
-
-		data["STATE_STORAGE_MINIO_SECRET_ACCESS_KEY"] = []byte("")
-		if instance.Spec.Minio != nil {
-			data["STATE_STORAGE_MINIO_SECRET_ACCESS_KEY"] = []byte(instance.Spec.Minio.RootPassword)
-		}
-
-		secret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      instance.GetNameWithSuffix("-airbyte-secrets"),
-				Namespace: instance.Namespace,
-				Labels:    labels,
-			},
-			Type: corev1.SecretTypeOpaque,
-			Data: data,
-		}
-		secrets = append(secrets, secret)
-
-	}
-
-	if instance.Spec.Temporal.Secret != nil {
+// extract temporal secret
+func (r *AirbyteReconciler) extractTemporalSecret(params ExtractorParams) (client.Object, error) {
+	instance := params.instance.(*stackv1alpha1.Airbyte)
+	mergedLabels := r.mergeLabels(params.roleGroup, instance.GetLabels(), params.cluster)
+	if secretField := instance.Spec.Temporal.RoleConfig.Secret; secretField != nil {
 		// Create a Data map to hold the secret data
 		Data := make(map[string][]byte)
-
 		// Iterate over instance.Spec.Temporal.Secret and create Secret data items
-		for k, v := range instance.Spec.Temporal.Secret {
+		for k, v := range secretField {
 			value := ""
 			if v != "" {
 				value = base64.StdEncoding.EncodeToString([]byte(v))
@@ -396,14 +312,12 @@ func (r *AirbyteReconciler) makeSecret(instance *stackv1alpha1.Airbyte) []*corev
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "temporal-secrets",
 				Namespace: instance.Namespace,
-				Labels:    labels,
+				Labels:    mergedLabels,
 			},
 			Type: corev1.SecretTypeOpaque,
 			Data: Data,
 		}
-		secrets = append(secrets, secret)
-
+		return secret, nil
 	}
-
-	return secrets
+	return nil, nil
 }
