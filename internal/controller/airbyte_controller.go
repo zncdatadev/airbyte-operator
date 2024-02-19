@@ -58,10 +58,16 @@ type AirbyteReconciler struct {
 func (r *AirbyteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	r.Log.Info("Reconciling instance")
 
-	instance, err := r.getAirbyteInstance(ctx, req)
+	existInstance, err := r.getAirbyteInstance(ctx, req)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	// if instance not found, return
+	if existInstance == nil {
+		return ctrl.Result{}, nil
+	}
+
+	instance := existInstance.DeepCopy()
 
 	if err := r.handleStatusConditions(ctx, instance); err != nil {
 		return ctrl.Result{}, err
@@ -104,6 +110,7 @@ func (r *AirbyteReconciler) handleStatusConditions(ctx context.Context, instance
 
 func (r *AirbyteReconciler) executeReconcileTasks(ctx context.Context, instance *stackv1alpha1.Airbyte) error {
 	tasks := []ReconcileTask[*stackv1alpha1.Airbyte]{
+		{resourceName: "Pod", reconcileFunc: r.reconcileBootloaderPod},
 		{resourceName: "Secret", reconcileFunc: r.reconcileSecret},
 		{resourceName: "ConfigMap", reconcileFunc: r.reconcileConfigMap},
 		{resourceName: "ServiceAccount", reconcileFunc: r.reconcileServiceAccount},

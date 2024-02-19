@@ -13,6 +13,7 @@ import (
 type ResourceType string
 
 const (
+	Pod            ResourceType = "Pod"
 	Deployment     ResourceType = "Deployment"
 	Service        ResourceType = "Service"
 	Secret         ResourceType = "Secret"
@@ -26,6 +27,7 @@ const (
 
 var (
 	ResourceMapper = map[ResourceType]string{
+		Pod:            "ReconcilePod",
 		Deployment:     status.ConditionTypeReconcileDeployment,
 		Service:        status.ConditionTypeReconcileService,
 		Secret:         status.ConditionTypeReconcileSecret,

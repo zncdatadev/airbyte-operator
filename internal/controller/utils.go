@@ -72,3 +72,49 @@ func (m *Map) MapMerge(source map[string]string, replace bool) {
 		}
 	}
 }
+
+func resolveSecret(secretVarNames []string, secretRef string, envVars *[]corev1.EnvVar) {
+	for _, secretVarName := range secretVarNames {
+		envVar := corev1.EnvVar{
+			Name: secretVarName,
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					Key: secretVarName,
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: secretRef,
+					},
+				},
+			},
+		}
+		*envVars = append(*envVars, envVar)
+		//append STATE_STORAGE_MINIO_ACCESS_KEY,STATE_STORAGE_MINIO_SECRET_ACCESS_KEY,
+		if secretVarName == "AWS_ACCESS_KEY_ID" {
+			envVar := corev1.EnvVar{
+				Name: "STATE_STORAGE_MINIO_ACCESS_KEY",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						Key: secretVarName,
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: secretRef,
+						},
+					},
+				},
+			}
+			*envVars = append(*envVars, envVar)
+		}
+		if secretVarName == "AWS_SECRET_ACCESS_KEY" {
+			envVar := corev1.EnvVar{
+				Name: "STATE_STORAGE_MINIO_SECRET_ACCESS_KEY",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						Key: secretVarName,
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: secretRef,
+						},
+					},
+				},
+			}
+			*envVars = append(*envVars, envVar)
+		}
+	}
+}

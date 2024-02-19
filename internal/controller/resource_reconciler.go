@@ -240,11 +240,12 @@ func (r *ResourceRequest) FetchS3(s3 *opgo.S3Bucket) (*opgo.S3Connection, error)
 	}
 	// if exist secret reference, fetch secret by reference,and override accessKey and secretKey
 	if secret, err := r.FetchSecretByReference(s3.Spec.Credential.ExistSecret); err != nil {
+		return nil, err
+	} else {
 		if secret != nil {
 			s3.Spec.Credential.AccessKey = string(secret.Data["ACCESS_KEY"])
 			s3.Spec.Credential.SecretKey = string(secret.Data["SECRET_KEY"])
 		}
-		return nil, err
 	}
 	//2 - fetch exist s3 connection by pre-fetch 's3.spec.name'
 	s3Connection := &opgo.S3Connection{
@@ -264,11 +265,12 @@ func (r *ResourceRequest) FetchDb(database *opgo.Database) (*opgo.DatabaseConnec
 	}
 	// if exist secret reference, fetch secret by reference, and override username and password
 	if secret, err := r.FetchSecretByReference(database.Spec.Credential.ExistSecret); err != nil {
+		return nil, err
+	} else {
 		if secret != nil {
 			database.Spec.Credential.Username = string(secret.Data["USERNAME"])
 			database.Spec.Credential.Password = string(secret.Data["PASSWORD"])
 		}
-		return nil, err
 	}
 
 	//2 - fetch exist database connection by pre-fetch 'database.spec.name'
@@ -307,6 +309,7 @@ type AirByteRole string
 
 const (
 	Cluster                AirByteRole = "Cluster"
+	Bootloader             AirByteRole = "Bootloader"
 	Server                 AirByteRole = "Server"
 	Cron                   AirByteRole = "Cron"
 	ApiServer              AirByteRole = "ApiServer"

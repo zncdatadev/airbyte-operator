@@ -1,9 +1,9 @@
 package controller
 
 import (
+	"fmt"
 	stackv1alpha1 "github.com/zncdata-labs/airbyte-operator/api/v1alpha1"
 	"github.com/zncdata-labs/airbyte-operator/api/v1alpha1/rolegroup"
-
 	corev1 "k8s.io/api/core/v1"
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -24,11 +24,14 @@ func (r *AirbyteReconciler) getRoleGroupLabels(config rolegroup.RoleConfigObject
 
 // merge labels
 func (r *AirbyteReconciler) mergeLabels(group rolegroup.RoleConfigObject, roleLabels map[string]string,
-	cluster rolegroup.RoleConfigObject) Map {
+	cluster rolegroup.RoleConfigObject, roleType AirByteRole) Map {
 	var mergeLabels = make(Map)
 	mergeLabels.MapMerge(r.getRoleGroupLabels(cluster), true)
 	mergeLabels.MapMerge(roleLabels, true)
 	mergeLabels.MapMerge(r.getRoleGroupLabels(group), true)
+	if roleType != "" {
+		mergeLabels["app.kubernetes.io/name"] = mergeLabels["app.kubernetes.io/name"] + "-" + roleNameMapper[roleType]
+	}
 	return mergeLabels
 }
 
@@ -249,10 +252,108 @@ func GetRoleGroupEx(clusterCfg any, roleCfg any, groupCfg any, roleFields []stri
 	return mergedRoleGroup
 }
 
-func createNameForRoleGroup(instance *stackv1alpha1.Airbyte, roleType string, groupName string) string {
-	var msg = instance.GetNameWithSuffix(roleType)
+var roleNameMapper = map[AirByteRole]string{
+	Bootloader:             "bootloader",
+	Server:                 "server",
+	Cron:                   "cron",
+	ApiServer:              "api-server",
+	ConnectorBuilderServer: "connector-builder-server",
+	PodSweeper:             "pod-sweeper",
+	Temporal:               "temporal",
+	Worker:                 "worker",
+	Webapp:                 "webapp",
+}
+
+func createNameForRoleGroup(instance *stackv1alpha1.Airbyte, resourceName string, groupName string) string {
+	var name = instance.GetNameWithSuffix(resourceName)
 	if groupName != "" {
-		msg = msg + "-" + groupName
+		name = name + "-" + groupName
 	}
-	return msg
+	return name
+}
+
+func createSvcNameForRoleGroup(instance *stackv1alpha1.Airbyte, roleType AirByteRole, groupName string) string {
+	name := instance.GetNameWithSuffix(roleNameMapper[roleType])
+	return name + "-" + groupName + "-svc"
+}
+
+func getServicePortByRole(roleType AirByteRole, groupName string, instance *stackv1alpha1.Airbyte) (int32, error) {
+	clusterCfg := instance.Spec.ClusterConfig.BaseRoleConfigSpec
+	var roleCfg rolegroup.RoleConfigObject
+	var groupCfg rolegroup.RoleConfigObject
+	switch roleType {
+	case Server:
+		roleCfg = instance.Spec.Server.RoleConfig
+		groups := instance.Spec.Server.RoleGroups
+		groupCfg = groups[groupName]
+	case ApiServer:
+		roleCfg = instance.Spec.ApiServer.RoleConfig
+		groups := instance.Spec.ApiServer.RoleGroups
+		groupCfg = groups[groupName]
+	case ConnectorBuilderServer:
+		roleCfg = instance.Spec.ConnectorBuilderServer.RoleConfig
+		groups := instance.Spec.ConnectorBuilderServer.RoleGroups
+		groupCfg = groups[groupName]
+	case Webapp:
+		roleCfg = instance.Spec.WebApp.RoleConfig
+		groups := instance.Spec.WebApp.RoleGroups
+		groupCfg = groups[groupName]
+	case Cron:
+		roleCfg = instance.Spec.Cron.RoleConfig
+		groups := instance.Spec.Cron.RoleGroups
+		groupCfg = groups[groupName]
+	case Temporal:
+		roleCfg = instance.Spec.Temporal.RoleConfig
+		groups := instance.Spec.Temporal.RoleGroups
+		groupCfg = groups[groupName]
+	case Worker:
+		roleCfg = instance.Spec.Worker.RoleConfig
+		groups := instance.Spec.Worker.RoleGroups
+		groupCfg = groups[groupName]
+	case PodSweeper:
+		roleCfg = instance.Spec.PodSweeper.RoleConfig
+		groups := instance.Spec.PodSweeper.RoleGroups
+		groupCfg = groups[groupName]
+	default:
+		return 0, fmt.Errorf("roleType %s is not supported", roleType)
+	}
+	return getServicePort(groupCfg, roleCfg, &clusterCfg), nil
+
+}
+
+func getSvcNameAndPort(instance *stackv1alpha1.Airbyte, roleType AirByteRole, groupName string) (string, int32) {
+	handler := func(roleType AirByteRole, groupName string, instance *stackv1alpha1.Airbyte) (string, int32) {
+		name := createSvcNameForRoleGroup(instance, roleType, groupName)
+		var sp int32
+		if port, err := getServicePortByRole(roleType, groupName, instance); err != nil {
+			panic(err)
+		} else {
+			sp = port
+		}
+		return name, sp
+	}
+
+	switch roleType {
+	case Server:
+		return handler(Server, groupName, instance)
+	case ApiServer:
+		return handler(ApiServer, groupName, instance)
+	case ConnectorBuilderServer:
+		return handler(ConnectorBuilderServer, groupName, instance)
+	case Webapp:
+		return handler(Webapp, groupName, instance)
+	case Temporal:
+		return handler(Temporal, groupName, instance)
+	default:
+		return "", 0
+	}
+}
+
+func getSvcHost(instance *stackv1alpha1.Airbyte, roleType AirByteRole, groupName string) string {
+	name, port := getSvcNameAndPort(instance, roleType, groupName)
+	return fmt.Sprintf("%s:%d", name, port)
+}
+
+func getSvcUrl(instance *stackv1alpha1.Airbyte, roleType AirByteRole, groupName string) string {
+	return fmt.Sprintf("http://%s", getSvcHost(instance, roleType, groupName))
 }

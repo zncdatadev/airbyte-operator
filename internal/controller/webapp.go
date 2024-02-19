@@ -33,13 +33,13 @@ func (r *AirbyteReconciler) extractWebAppServiceForRoleGroup(params ExtractorPar
 	roleCfg := webapp.RoleConfig
 	clusterCfg := params.cluster
 	roleGroupName := params.roleGroupName
-	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg)
+	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg, Webapp)
 	schema := params.scheme
 
 	port, serviceType, annotations := getServiceInfo(groupCfg, roleCfg, clusterCfg)
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        createNameForRoleGroup(instance, "webapp", roleGroupName),
+			Name:        createSvcNameForRoleGroup(instance, Webapp, roleGroupName),
 			Namespace:   instance.Namespace,
 			Labels:      mergedLabels,
 			Annotations: annotations,
@@ -82,7 +82,7 @@ func (r *AirbyteReconciler) extractWebAppDeploymentForRoleGroup(params Extractor
 	roleCfg := server.RoleConfig
 	clusterCfg := params.cluster
 	roleGroupName := params.roleGroupName
-	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg)
+	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg, Webapp)
 	schema := params.scheme
 
 	realGroupCfg := groupCfg.(*stackv1alpha1.WebAppRoleConfigSpec)
@@ -133,10 +133,9 @@ func (r *AirbyteReconciler) extractWebAppDeploymentForRoleGroup(params Extractor
 
 // merge env vars for deployment
 func mergeEnvVarsForWebAppDeployment(instance *stackv1alpha1.Airbyte, roleGroup *stackv1alpha1.WebAppRoleConfigSpec,
-	roleGroupName string) []corev1.EnvVar {
+	groupName string) []corev1.EnvVar {
 
-	envVarNames := []string{"TRACKING_STRATEGY", "INTERNAL_API_HOST", "KEYCLOAK_INTERNAL_HOST", "CONNECTOR_BUILDER_API_HOST",
-		"AIRBYTE_VERSION", "API_URL", "CONNECTOR_BUILDER_API_URL"}
+	envVarNames := []string{"TRACKING_STRATEGY", "KEYCLOAK_INTERNAL_HOST", "AIRBYTE_VERSION", "API_URL"}
 	var envVars []corev1.EnvVar
 
 	if instance != nil && instance.Spec.ClusterConfig != nil {
@@ -155,13 +154,29 @@ func mergeEnvVarsForWebAppDeployment(instance *stackv1alpha1.Airbyte, roleGroup 
 				}
 				envVars = append(envVars, envVar)
 			}
+			// INTERNAL_API_HOST
+			envVars = append(envVars, corev1.EnvVar{
+				Name:  "INTERNAL_API_HOST",
+				Value: getSvcHost(instance, ApiServer, groupName),
+			})
+			//CONNECTOR_BUILDER_API_HOST
+			envVars = append(envVars, corev1.EnvVar{
+				Name:  "CONNECTOR_BUILDER_API_HOST",
+				Value: getSvcHost(instance, ConnectorBuilderServer, groupName),
+			})
+			//CONNECTOR_BUILDER_API_URL
+			envVars = append(envVars, corev1.EnvVar{
+				Name:  "CONNECTOR_BUILDER_API_URL",
+				Value: getSvcUrl(instance, ConnectorBuilderServer, groupName),
+			})
+
 		}
 	}
 
 	if roleGroup.Config != nil && roleGroup.Secret != nil {
-		envVars = appendEnvVarsFromSecret(envVars, *roleGroup.Secret, "webapp-secrets", roleGroupName)
+		envVars = appendEnvVarsFromSecret(envVars, *roleGroup.Secret, "webapp-secrets", groupName)
 	} else if instance.Spec.WebApp != nil && instance.Spec.WebApp.RoleConfig.Secret != nil {
-		envVars = appendEnvVarsFromSecret(envVars, *instance.Spec.WebApp.RoleConfig.Secret, "webapp-secrets", roleGroupName)
+		envVars = appendEnvVarsFromSecret(envVars, *instance.Spec.WebApp.RoleConfig.Secret, "webapp-secrets", groupName)
 	}
 
 	if instance != nil && (instance.Spec.WebApp != nil || instance.Spec.ClusterConfig != nil) {
@@ -236,7 +251,7 @@ func (r *AirbyteReconciler) enableIngresForWebapp(groupName string, rsc any, cli
 // extract webapp ingress for role group
 func (r *AirbyteReconciler) extractWebAppIngressForRoleGroup(params ExtractorParams) (client.Object, error) {
 	instance := params.instance.(*stackv1alpha1.Airbyte)
-	mergedLabels := r.mergeLabels(params.roleGroup, instance.GetLabels(), params.cluster)
+	mergedLabels := r.mergeLabels(params.roleGroup, instance.GetLabels(), params.cluster, Webapp)
 	realRoleCfg := instance.Spec.WebApp.RoleConfig
 	realGroupCfg := params.roleGroup.(*stackv1alpha1.WebAppRoleConfigSpec)
 	groupName := params.roleGroupName
@@ -299,7 +314,7 @@ func (r *AirbyteReconciler) reconcileWebAppSecret(ctx context.Context, instance 
 // extract webapp secret for role group
 func (r *AirbyteReconciler) extractWebappSecretForRoleGroup(params ExtractorParams) (client.Object, error) {
 	instance := params.instance.(*stackv1alpha1.Airbyte)
-	mergedLabels := r.mergeLabels(params.roleGroup, instance.GetLabels(), params.cluster)
+	mergedLabels := r.mergeLabels(params.roleGroup, instance.GetLabels(), params.cluster, Webapp)
 	groupName := params.roleGroupName
 	realRoleCfg := instance.Spec.WebApp.RoleConfig
 	realGroupCfg := params.roleGroup.(*stackv1alpha1.WebAppRoleConfigSpec)

@@ -30,13 +30,13 @@ func (r *AirbyteReconciler) extractConnectorBuilderServerServiceForRoleGroup(par
 	roleCfg := server.RoleConfig
 	clusterCfg := params.cluster
 	roleGroupName := params.roleGroupName
-	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg)
+	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg, ConnectorBuilderServer)
 	schema := params.scheme
 
 	port, serviceType, annotations := getServiceInfo(groupCfg, roleCfg, clusterCfg)
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        createNameForRoleGroup(instance, "connector-builder-server-svc", roleGroupName),
+			Name:        createSvcNameForRoleGroup(instance, ConnectorBuilderServer, roleGroupName),
 			Namespace:   instance.Namespace,
 			Labels:      mergedLabels,
 			Annotations: annotations,
@@ -176,7 +176,7 @@ func (r *AirbyteReconciler) extractConnectorBuilderServerDeploymentForRoleGroup(
 	roleCfg := server.RoleConfig
 	clusterCfg := params.cluster
 	roleGroupName := params.roleGroupName
-	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg)
+	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg, ConnectorBuilderServer)
 	schema := params.scheme
 
 	image, securityContext, replicas, resources, containerPorts := getDeploymentInfo(groupCfg, roleCfg, clusterCfg)
@@ -242,7 +242,7 @@ func (r *AirbyteReconciler) extractConnectorBuilderServerSecretForRoleGroup(para
 	roleCfg := server.RoleConfig
 	clusterCfg := params.cluster
 	roleGroupName := params.roleGroupName
-	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg)
+	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg, ConnectorBuilderServer)
 	schema := params.scheme
 
 	realGroupCfg := groupCfg.(*stackv1alpha1.ConnectorBuilderServerRoleConfigSpec)

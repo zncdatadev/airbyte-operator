@@ -36,30 +36,56 @@ func (r *AirbyteReconciler) extractClusterEnvConfigMap(params ExtractorParams) (
 	labels := instance.GetLabels()
 
 	data := map[string]string{
-		"AIRBYTE_VERSION": instance.Spec.Server.RoleConfig.Image.Tag,
-		"AIRBYTE_EDITION": instance.Spec.ClusterConfig.Edition,
-		"CONFIG_ROOT":     "/configs",
+		"ACTIVITY_INITIAL_DELAY_BETWEEN_ATTEMPTS_SECONDS":   "",
+		"ACTIVITY_MAX_ATTEMPT":                              "",
+		"ACTIVITY_MAX_DELAY_BETWEEN_ATTEMPTS_SECONDS":       "",
+		"AIRBYTE_EDITION":                                   "community",
+		"AIRBYTE_VERSION":                                   "0.50.45",
+		"API_URL":                                           "/api/v1/",
+		"AUTO_DETECT_SCHEMA":                                "true",
+		"CONFIG_ROOT":                                       "/configs",
 		"CONFIGS_DATABASE_MINIMUM_FLYWAY_MIGRATION_VERSION": "0.35.15.001",
-		"DATA_DOCKER_MOUNT":                              "airbyte_data",
-		"DB_DOCKER_MOUNT":                                "airbyte_db",
-		"INTERNAL_API_HOST":                              instance.Name + "-airbyte-server-svc:" + strconv.FormatInt(int64(instance.Spec.Server.RoleConfig.Service.Port), 10),
-		"CONNECTOR_BUILDER_API_HOST":                     instance.Name + "-airbyte-connector-builder-server-svc:" + strconv.FormatInt(int64(instance.Spec.ConnectorBuilderServer.RoleConfig.Service.Port), 10),
-		"AIRBYTE_API_HOST":                               instance.Name + "-airbyte-api-server-svc:" + strconv.FormatInt(int64(instance.Spec.ApiServer.RoleConfig.Service.Port), 10),
-		"JOBS_DATABASE_MINIMUM_FLYWAY_MIGRATION_VERSION": "0.29.15.001",
-		"LOCAL_ROOT":                                     "/tmp/airbyte_local",
-		"STATE_STORAGE_MINIO_BUCKET_NAME":                "airbyte-state-storage",
-		"TEMPORAL_HOST":                                  instance.Name + "-temporal:" + strconv.FormatInt(int64(instance.Spec.Temporal.RoleConfig.Service.Port), 10),
-		"TEMPORAL_WORKER_PORTS":                          "9001,9002,9003,9004,9005,9006,9007,9008,9009,9010,9011,9012,9013,9014,9015,9016,9017,9018,9019,9020,9021,9022,9023,9024,9025,9026,9027,9028,9029,9030,9031,9032,9033,9034,9035,9036,9037,9038,9039,9040",
-		"TRACKING_STRATEGY":                              "segment",
-		"WORKER_ENVIRONMENT":                             "kubernetes",
-		"WORKSPACE_DOCKER_MOUNT":                         "airbyte_workspace",
-		"WORKSPACE_ROOT":                                 "/workspace",
-		"WORKFLOW_FAILURE_RESTART_DELAY_SECONDS":         "",
-		"USE_STREAM_CAPABLE_STATE":                       "true",
-		"AUTO_DETECT_SCHEMA":                             "true",
-		"WORKERS_MICRONAUT_ENVIRONMENTS":                 "control-plane",
-		"CRON_MICRONAUT_ENVIRONMENTS":                    "control-plane",
-		"SHOULD_RUN_NOTIFY_WORKFLOWS":                    "true",
+		"CONNECTOR_BUILDER_API_URL":                         "/connector-builder-api",
+		"CONTAINER_ORCHESTRATOR_IMAGE":                      "",
+		"CRON_MICRONAUT_ENVIRONMENTS":                       "control-plane",
+		"DATA_DOCKER_MOUNT":                                 "airbyte_data",
+		"DATABASE_DB":                                       "db-airbyte",
+		"DATABASE_PORT":                                     "5432",
+		"DB_DOCKER_MOUNT":                                   "airbyte_db",
+		"GCS_LOG_BUCKET":                                    "",
+		"JOB_MAIN_CONTAINER_CPU_LIMIT":                      "",
+		"JOB_MAIN_CONTAINER_CPU_REQUEST":                    "",
+		"JOB_MAIN_CONTAINER_MEMORY_LIMIT":                   "",
+		"JOB_MAIN_CONTAINER_MEMORY_REQUEST":                 "",
+		"JOBS_DATABASE_MINIMUM_FLYWAY_MIGRATION_VERSION":    "0.29.15.001",
+		"KEYCLOAK_INTERNAL_HOST":                            "localhost",
+		"KUBERNETES_CLIENT_MAX_IDLE_CONNECTIONS":            "",
+		"LAUNCHER_MICRONAUT_ENVIRONMENTS":                   "control-plane,oss",
+		"LOCAL_ROOT":                                        "/tmp/airbyte_local",
+		"MAX_NOTIFY_WORKERS":                                "5",
+		"METRIC_CLIENT":                                     "",
+		"MICROMETER_METRICS_ENABLED":                        "false",
+		"MICROMETER_METRICS_STATSD_FLAVOR":                  "datadog",
+		"OTEL_COLLECTOR_ENDPOINT":                           "",
+		"RUN_DATABASE_MIGRATION_ON_STARTUP":                 "true",
+		"SEGMENT_WRITE_KEY":                                 "7UDdp5K55CyiGgsauOr2pNNujGvmhaeu",
+		"SHOULD_RUN_NOTIFY_WORKFLOWS":                       "true",
+		"STATSD_HOST":                                       "localhost",
+		"STATSD_PORT":                                       "8125",
+		"TEMPORAL_WORKER_PORTS":                             "9001,9002,9003,9004,9005,9006,9007,9008,9009,9010,9011,9012,9013,9014,9015,9016,9017,9018,9019,9020,9021,9022,9023,9024,9025,9026,9027,9028,9029,9030,9031,9032,9033,9034,9035,9036,9037,9038,9039,9040",
+		"TRACKING_STRATEGY":                                 "segment",
+		"WORKER_ENVIRONMENT":                                "kubernetes",
+		// Using airbyte's minio is compatible with operator-go's s3
+		"WORKER_LOGS_STORAGE_TYPE":               "minio",
+		"WORKER_STATE_STORAGE_TYPE":              "minio",
+		"WORKERS_MICRONAUT_ENVIRONMENTS":         "control-plane",
+		"WORKFLOW_FAILURE_RESTART_DELAY_SECONDS": "",
+		"WORKLOAD_API_HOST":                      "http://localhost",
+		"WORKLOAD_LAUNCHER_PARALLELISM":          "10",
+		"WORKSPACE_DOCKER_MOUNT":                 "airbyte_workspace",
+		"WORKSPACE_ROOT":                         "/workspace",
+		// custom unknown
+		"USE_STREAM_CAPABLE_STATE": "true",
 	}
 
 	var clusterConfig = instance.Spec.ClusterConfig
@@ -76,7 +102,7 @@ func (r *AirbyteReconciler) extractClusterEnvConfigMap(params ExtractorParams) (
 		return nil, errors.Wrap(err, fmt.Sprintf("Failed to fetch s3 log bucket by reference %s", logS3Ref))
 	}
 	data["S3_LOG_BUCKET"] = s3Bucket.Spec.BucketName
-	data["S3_LOG_BUCKET_REGION"] = s3Connection.Spec.Region
+	data["S3_LOG_BUCKET_REGION"] = ""
 	data["S3_ENDPOINT"] = s3Connection.Spec.Endpoint
 	data["S3_PATH_STYLE_ACCESS"] = strconv.FormatBool(s3Connection.Spec.PathStyle)
 	//db
@@ -482,9 +508,8 @@ func (r *AirbyteReconciler) extractClusterYmlContentConfigMap(params ExtractorPa
 
 // reconcile airbyte log storage secret
 func (r *AirbyteReconciler) reconcileClusterSecret(ctx context.Context, instance *stackv1alpha1.Airbyte) error {
-	roleGroups := convertRoleGroupToRoleConfigObject(instance, Temporal)
-	reconcileParams := r.createReconcileParams(ctx, roleGroups, instance, r.extractClusterSecret)
-	if err := reconcileParams.createOrUpdateResource(); err != nil {
+	reconcileParams := r.createReconcileParams(ctx, nil, instance, r.extractClusterSecret)
+	if err := reconcileParams.createOrUpdateResourceNoGroup(); err != nil {
 		return err
 	}
 	return nil
@@ -493,7 +518,7 @@ func (r *AirbyteReconciler) reconcileClusterSecret(ctx context.Context, instance
 // extract airbyte global secret
 func (r *AirbyteReconciler) extractClusterSecret(params ExtractorParams) (client.Object, error) {
 	instance := params.instance.(*stackv1alpha1.Airbyte)
-	mergedLabels := r.mergeLabels(params.roleGroup, instance.GetLabels(), params.cluster)
+	mergedLabels := r.mergeLabels(params.roleGroup, instance.GetLabels(), params.cluster, "")
 	if logs3 := instance.Spec.ClusterConfig.Logs.S3; logs3 != nil {
 		s3rsc := &opgo.S3Bucket{
 			ObjectMeta: metav1.ObjectMeta{
@@ -537,6 +562,11 @@ func (r *AirbyteReconciler) extractClusterSecret(params ExtractorParams) (client
 			},
 			Type: corev1.SecretTypeOpaque,
 			Data: data,
+		}
+		err = ctrl.SetControllerReference(instance, secret, r.Scheme)
+		if err != nil {
+			r.Log.Error(err, "Failed to set controller reference for secret")
+			return nil, err
 		}
 		return secret, nil
 	}

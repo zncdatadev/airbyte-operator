@@ -14,16 +14,16 @@ spec:
     stateStorage:
       s3:
         bucket:
-          reference: "airbyte-state-storage"
+          reference: "airbyte-state-s3"
         pathStyle_access: true
     logs:
       s3:
         bucket:
-          reference: "airbyte-dev-logs"
+          reference: "airbyte-log-s3"
         pathStyle_access: true
     config:
       database:
-        reference: database-sample
+        reference: airbyte-db
   server:
     enabled: true
     roleConfig:
@@ -330,7 +330,7 @@ spec:
             limit: 512Mi
       ingress:
         enabled: true
-        host: www.zncdata.net
+        host: www.example.com
     roleGroups:
       default:
         replicas: 1
