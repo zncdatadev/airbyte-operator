@@ -28,7 +28,7 @@ func (r *AirbyteReconciler) extractWorkerDeploymentForRoleGroup(params Extractor
 	roleCfg := server.RoleConfig
 	clusterCfg := params.cluster
 	roleGroupName := params.roleGroupName
-	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg)
+	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg, Worker)
 	schema := params.scheme
 
 	image, securityContext, replicas, resources, containerPorts := getDeploymentInfo(groupCfg, roleCfg, clusterCfg)
@@ -100,17 +100,15 @@ func mergeEnvVarsForWorkerWebAppDeployment(instance *stackv1alpha1.Airbyte, grou
 	}
 
 	envVarNames := []string{"AIRBYTE_VERSION", "CONFIG_ROOT", "DATABASE_HOST", "DATABASE_PORT", "DATABASE_URL",
-		"TRACKING_STRATEGY", "WORKSPACE_ROOT", "LOCAL_ROOT", "WEBAPP_URL", "TEMPORAL_HOST",
+		"TRACKING_STRATEGY", "WORKSPACE_ROOT", "LOCAL_ROOT",
 		"TEMPORAL_WORKER_PORTS", "S3_PATH_STYLE_ACCESS", "JOB_MAIN_CONTAINER_CPU_REQUEST", "JOB_MAIN_CONTAINER_CPU_LIMIT",
-		"JOB_MAIN_CONTAINER_MEMORY_REQUEST", "JOB_MAIN_CONTAINER_MEMORY_LIMIT", "S3_LOG_BUCKET", "S3_LOG_BUCKET_REGION",
-		"S3_ENDPOINT", "INTERNAL_API_HOST",
+		"JOB_MAIN_CONTAINER_MEMORY_REQUEST", "JOB_MAIN_CONTAINER_MEMORY_LIMIT", "S3_LOG_BUCKET",
+		"S3_ENDPOINT", "WORKLOAD_API_HOST", "S3_LOG_BUCKET_REGION",
 		"CONFIGS_DATABASE_MINIMUM_FLYWAY_MIGRATION_VERSION", "JOBS_DATABASE_MINIMUM_FLYWAY_MIGRATION_VERSION",
 		"METRIC_CLIENT", "OTEL_COLLECTOR_ENDPOINT", "ACTIVITY_MAX_ATTEMPT", "ACTIVITY_INITIAL_DELAY_BETWEEN_ATTEMPTS_SECONDS",
 		"ACTIVITY_MAX_DELAY_BETWEEN_ATTEMPTS_SECONDS", "WORKFLOW_FAILURE_RESTART_DELAY_SECONDS", "AUTO_DETECT_SCHEMA",
 		"USE_STREAM_CAPABLE_STATE", "SHOULD_RUN_NOTIFY_WORKFLOWS", "WORKER_LOGS_STORAGE_TYPE", "WORKER_STATE_STORAGE_TYPE"}
-	secretVarNames := []string{"DATABASE_PASSWORD", "DATABASE_USER", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"}
 	var envVars []corev1.EnvVar
-
 	for _, envVarName := range envVarNames {
 		envVar := corev1.EnvVar{
 			Name: envVarName,
@@ -126,6 +124,48 @@ func mergeEnvVarsForWorkerWebAppDeployment(instance *stackv1alpha1.Airbyte, grou
 		envVars = append(envVars, envVar)
 	}
 
+	secretVarNames := []string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "DATABASE_PASSWORD", "DATABASE_USER"}
+	resolveSecret(secretVarNames, createNameForRoleGroup(instance, "secrets", ""), &envVars)
+
+	// TODO: `Caused by: java.lang.IllegalStateException: Only one of Region or EndpointConfiguration may be set.`
+	//envVars = append(envVars, corev1.EnvVar{
+	//	Name:  "S3_LOG_BUCKET_REGION",
+	//	Value: "",
+	//})
+	// used both for STATE_STORAGE_MINIO_ENDPOINT and S3_MINIO_ENDPOINT
+	s3EndpointEnvSource := &corev1.EnvVarSource{
+		ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+			Key: "S3_ENDPOINT",
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: createNameForRoleGroup(instance, "env", ""),
+			},
+		},
+	}
+	// STATE_STORAGE_MINIO_ENDPOINT
+	envVars = append(envVars, corev1.EnvVar{
+		Name:      "STATE_STORAGE_MINIO_ENDPOINT",
+		ValueFrom: s3EndpointEnvSource,
+	})
+	// S3_MINIO_ENDPOINT
+	envVars = append(envVars, corev1.EnvVar{
+		Name:      "S3_MINIO_ENDPOINT",
+		ValueFrom: s3EndpointEnvSource,
+	})
+	//WEBAPP_URL
+	envVars = append(envVars, corev1.EnvVar{
+		Name:  "WEBAPP_URL",
+		Value: getSvcUrl(instance, Webapp, groupName),
+	})
+	//TEMPORAL_HOST
+	envVars = append(envVars, corev1.EnvVar{
+		Name:  "TEMPORAL_HOST",
+		Value: getSvcHost(instance, Temporal, groupName),
+	})
+	//INTERNAL_API_HOST
+	envVars = append(envVars, corev1.EnvVar{
+		Name:  "INTERNAL_API_HOST",
+		Value: getSvcHost(instance, ApiServer, groupName),
+	})
 	envVars = append(envVars, corev1.EnvVar{
 		Name: "MICRONAUT_ENVIRONMENTS",
 		ValueFrom: &corev1.EnvVarSource{
@@ -146,7 +186,6 @@ func mergeEnvVarsForWorkerWebAppDeployment(instance *stackv1alpha1.Airbyte, grou
 			},
 		},
 	})
-
 	envVars = append(envVars, corev1.EnvVar{
 		Name:  "WORKSPACE_DOCKER_MOUNT",
 		Value: "workspace",
@@ -158,19 +197,5 @@ func mergeEnvVarsForWorkerWebAppDeployment(instance *stackv1alpha1.Airbyte, grou
 		Value: instance.Spec.ClusterConfig.ServiceAccountName,
 	})
 
-	for _, secretVarName := range secretVarNames {
-		envVar := corev1.EnvVar{
-			Name: secretVarName,
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					Key: secretVarName,
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: createNameForRoleGroup(instance, "secrets", ""),
-					},
-				},
-			},
-		}
-		envVars = append(envVars, envVar)
-	}
 	return envVars
 }

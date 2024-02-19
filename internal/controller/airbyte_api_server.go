@@ -30,13 +30,13 @@ func (r *AirbyteReconciler) extractApiServerServiceForRoleGroup(params Extractor
 	roleCfg := server.RoleConfig
 	clusterCfg := params.cluster
 	roleGroupName := params.roleGroupName
-	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg)
+	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg, ApiServer)
 	schema := params.scheme
 
 	port, serviceType, annotations := getServiceInfo(groupCfg, roleCfg, clusterCfg)
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        createNameForRoleGroup(instance, "api-server", roleGroupName),
+			Name:        createSvcNameForRoleGroup(instance, ApiServer, roleGroupName),
 			Namespace:   instance.Namespace,
 			Labels:      mergedLabels,
 			Annotations: annotations,
@@ -75,23 +75,17 @@ func (r *AirbyteReconciler) reconcileAirbyteApiServerDeployment(ctx context.Cont
 
 func mergeEnvVarsForApiServerDeployment(instance *stackv1alpha1.Airbyte, roleGroup *stackv1alpha1.ApiServerRoleConfigSpec,
 	roleGroupName string, containerPorts *[]corev1.ContainerPort) []corev1.EnvVar {
-	envVarNames := []string{"AIRBYTE_API_HOST", "INTERNAL_API_HOST"}
 	var envVars []corev1.EnvVar
 
-	for _, envVarName := range envVarNames {
-		envVar := corev1.EnvVar{
-			Name: envVarName,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key: envVarName,
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: createNameForRoleGroup(instance, "env", ""),
-					},
-				},
-			},
-		}
-		envVars = append(envVars, envVar)
-	}
+	//INTERNAL_API_HOST
+	envVars = append(envVars, corev1.EnvVar{
+		Name:  "INTERNAL_API_HOST",
+		Value: getSvcHost(instance, Server, roleGroupName),
+	})
+	envVars = append(envVars, corev1.EnvVar{
+		Name:  "AIRBYTE_API_HOST",
+		Value: getSvcHost(instance, ApiServer, roleGroupName),
+	})
 
 	if roleGroup.Config != nil && roleGroup.Debug != nil {
 		if roleGroup.Debug.Enabled {
@@ -188,7 +182,7 @@ func (r *AirbyteReconciler) extractApiServerDeploymentForRoleGroup(params Extrac
 	roleCfg := server.RoleConfig
 	clusterCfg := params.cluster
 	roleGroupName := params.roleGroupName
-	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg)
+	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg, ApiServer)
 	schema := params.scheme
 
 	realGroupCfg := groupCfg.(*stackv1alpha1.ApiServerRoleConfigSpec)
@@ -257,7 +251,7 @@ func (r *AirbyteReconciler) extractAirbyteApiServerSecretForRoleGroup(params Ext
 	roleCfg := server.RoleConfig
 	clusterCfg := params.cluster
 	roleGroupName := params.roleGroupName
-	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg)
+	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg, ApiServer)
 	schema := params.scheme
 
 	realGroupCfg := groupCfg.(*stackv1alpha1.ApiServerRoleConfigSpec)

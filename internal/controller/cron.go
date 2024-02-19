@@ -27,7 +27,7 @@ func (r *AirbyteReconciler) extractCronDeployment(params ExtractorParams) (clien
 	groupCfg := params.roleGroup
 	roleCfg := server.RoleConfig
 	clusterCfg := params.cluster
-	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg)
+	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg, Cron)
 	schema := params.scheme
 
 	image, securityContext, replicas, resources, _ := getDeploymentInfo(groupCfg, roleCfg, clusterCfg)
@@ -78,7 +78,7 @@ func (r *AirbyteReconciler) extractCronDeployment(params ExtractorParams) (clien
 // merge env var for cron deployment
 func (r *AirbyteReconciler) mergeCronEnvVars(instance *stackv1alpha1.Airbyte, groupName string) []corev1.EnvVar {
 	envVarNames := []string{"AIRBYTE_VERSION", "CONFIGS_DATABASE_MINIMUM_FLYWAY_MIGRATION_VERSION", "DATABASE_URL",
-		"TEMPORAL_HOST", "TRACKING_STRATEGY", "WORKFLOW_FAILURE_RESTART_DELAY_SECONDS", "WORKSPACE_DOCKER_MOUNT", "WORKSPACE_ROOT"}
+		"TRACKING_STRATEGY", "WORKFLOW_FAILURE_RESTART_DELAY_SECONDS", "WORKSPACE_DOCKER_MOUNT", "WORKSPACE_ROOT"}
 	var envVars []corev1.EnvVar
 	if instance != nil && instance.Spec.ClusterConfig != nil {
 		if instance.Spec.ClusterConfig.DeploymentMode == "oss" {
@@ -96,6 +96,11 @@ func (r *AirbyteReconciler) mergeCronEnvVars(instance *stackv1alpha1.Airbyte, gr
 				}
 				envVars = append(envVars, envVar)
 			}
+
+			envVars = append(envVars, corev1.EnvVar{
+				Name:  "TEMPORAL_HOST",
+				Value: getSvcHost(instance, Temporal, groupName),
+			})
 
 			envVars = append(envVars, corev1.EnvVar{
 				Name: "MICRONAUT_ENVIRONMENTS",

@@ -30,12 +30,12 @@ func (r *AirbyteReconciler) extractTemporalServiceForRoleGroup(params ExtractorP
 	groupCfg := params.roleGroup
 	roleCfg := temporal.RoleConfig
 	clusterCfg := params.cluster
-	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg)
+	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg, Temporal)
 	schema := params.scheme
 	port, serviceType, annotations := getServiceInfo(groupCfg, roleCfg, clusterCfg)
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        createNameForRoleGroup(instance, "temporal", params.roleGroupName),
+			Name:        createSvcNameForRoleGroup(instance, Temporal, params.roleGroupName),
 			Namespace:   instance.Namespace,
 			Labels:      mergedLabels,
 			Annotations: annotations,
@@ -78,7 +78,7 @@ func (r *AirbyteReconciler) extractTemporalDeploymentForRoleGroup(params Extract
 	groupCfg := params.roleGroup
 	roleCfg := temporal.RoleConfig
 	clusterCfg := params.cluster
-	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg)
+	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg, Temporal)
 	schema := params.scheme
 	image, securityContext, replicas, resources, containerPorts := getDeploymentInfo(groupCfg, roleCfg, clusterCfg)
 	envVars, err := r.mergeEnvVarsForTemporalDeployment(instance, params.ctx)
@@ -265,7 +265,7 @@ func (r *AirbyteReconciler) reconcileTemporalConfigMap(ctx context.Context, inst
 // extract temporal dynamic config configmap
 func (r *AirbyteReconciler) extractTemporalDynamicConfigConfigMap(params ExtractorParams) (client.Object, error) {
 	instance := params.instance.(*stackv1alpha1.Airbyte)
-	mergedLabels := r.mergeLabels(params.roleGroup, instance.GetLabels(), params.cluster)
+	mergedLabels := r.mergeLabels(params.roleGroup, instance.GetLabels(), params.cluster, Temporal)
 	configMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      createNameForRoleGroup(instance, "tempora-dynamicconfig", params.roleGroupName),
@@ -296,7 +296,7 @@ func (r *AirbyteReconciler) reconcileTemporalSecret(ctx context.Context, instanc
 // extract temporal secret
 func (r *AirbyteReconciler) extractTemporalSecret(params ExtractorParams) (client.Object, error) {
 	instance := params.instance.(*stackv1alpha1.Airbyte)
-	mergedLabels := r.mergeLabels(params.roleGroup, instance.GetLabels(), params.cluster)
+	mergedLabels := r.mergeLabels(params.roleGroup, instance.GetLabels(), params.cluster, Temporal)
 	if secretField := instance.Spec.Temporal.RoleConfig.Secret; secretField != nil {
 		// Create a Data map to hold the secret data
 		Data := make(map[string][]byte)

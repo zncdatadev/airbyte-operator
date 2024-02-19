@@ -29,13 +29,13 @@ func (r *AirbyteReconciler) extractServerServiceForRoleGroup(params ExtractorPar
 	roleCfg := server.RoleConfig
 	clusterCfg := params.cluster
 	roleGroupName := params.roleGroupName
-	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg)
+	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg, Server)
 	schema := params.scheme
 
 	port, serviceType, annotations := getServiceInfo(groupCfg, roleCfg, clusterCfg)
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        createNameForRoleGroup(instance, "server", roleGroupName),
+			Name:        createSvcNameForRoleGroup(instance, Server, roleGroupName),
 			Namespace:   instance.Namespace,
 			Labels:      mergedLabels,
 			Annotations: annotations,
@@ -78,7 +78,7 @@ func (r *AirbyteReconciler) extractServerDeploymentForRoleGroup(params Extractor
 	roleCfg := server.RoleConfig
 	clusterCfg := params.cluster
 	roleGroupName := params.roleGroupName
-	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg)
+	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg, Server)
 	schema := params.scheme
 
 	image, securityContext, replicas, resources, containerPorts := getDeploymentInfo(groupCfg, roleCfg, clusterCfg)
@@ -151,12 +151,13 @@ func (r *AirbyteReconciler) extractServerDeploymentForRoleGroup(params Extractor
 // merge env vars for airbyte server deployment
 func mergeEnvVarsForServerDeployment(instance *stackv1alpha1.Airbyte, groupName string) []corev1.EnvVar {
 	envVarNames := []string{"AIRBYTE_VERSION", "AIRBYTE_EDITION", "AUTO_DETECT_SCHEMA", "CONFIG_ROOT", "DATABASE_URL",
-		"TRACKING_STRATEGY", "WORKER_ENVIRONMENT", "WORKSPACE_ROOT", "WEBAPP_URL", "TEMPORAL_HOST", "JOB_MAIN_CONTAINER_CPU_REQUEST",
-		"JOB_MAIN_CONTAINER_CPU_LIMIT", "JOB_MAIN_CONTAINER_MEMORY_REQUEST", "JOB_MAIN_CONTAINER_MEMORY_LIMIT", "S3_LOG_BUCKET", "S3_LOG_BUCKET_REGION",
-		"S3_ENDPOINT", "STATE_STORAGE_MINIO_BUCKET_NAME", "S3_PATH_STYLE_ACCESS",
+		"TRACKING_STRATEGY", "WORKER_ENVIRONMENT", "WORKSPACE_ROOT", "JOB_MAIN_CONTAINER_CPU_REQUEST",
+		"JOB_MAIN_CONTAINER_CPU_LIMIT", "JOB_MAIN_CONTAINER_MEMORY_REQUEST", "JOB_MAIN_CONTAINER_MEMORY_LIMIT", "JOBS_DATABASE_MINIMUM_FLYWAY_MIGRATION_VERSION",
+		"S3_LOG_BUCKET", "S3_PATH_STYLE_ACCESS", "GCS_LOG_BUCKET", "STATE_STORAGE_MINIO_BUCKET_NAME", "S3_LOG_BUCKET_REGION",
 		"CONFIGS_DATABASE_MINIMUM_FLYWAY_MIGRATION_VERSION",
-		"JOBS_DATABASE_MINIMUM_FLYWAY_MIGRATION_VERSION", "WORKER_LOGS_STORAGE_TYPE", "WORKER_STATE_STORAGE_TYPE", "KEYCLOAK_INTERNAL_HOST"}
-	secretVarNames := []string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "DATABASE_PASSWORD", "DATABASE_USER"}
+		"WORKER_LOGS_STORAGE_TYPE", "WORKER_STATE_STORAGE_TYPE", "KEYCLOAK_INTERNAL_HOST", "MICROMETER_METRICS_ENABLED",
+		"MICROMETER_METRICS_STATSD_FLAVOR", "SEGMENT_WRITE_KEY", "STATSD_HOST", "STATSD_PORT",
+	}
 
 	var envVars []corev1.EnvVar
 	for _, envVarName := range envVarNames {
@@ -173,24 +174,55 @@ func mergeEnvVarsForServerDeployment(instance *stackv1alpha1.Airbyte, groupName 
 		}
 		envVars = append(envVars, envVar)
 	}
+
+	secretVarNames := []string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "DATABASE_PASSWORD", "DATABASE_USER"}
+	resolveSecret(secretVarNames, createNameForRoleGroup(instance, "secrets", ""), &envVars)
+
+	// TODO: `Caused by: java.lang.IllegalStateException: Only one of Region or EndpointConfiguration may be set.`
+
+	s3EndpointEnvSource := &corev1.EnvVarSource{
+		ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+			Key: "S3_ENDPOINT",
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: createNameForRoleGroup(instance, "env", ""),
+			},
+		},
+	}
+	// STATE_STORAGE_MINIO_ENDPOINT
+	envVars = append(envVars, corev1.EnvVar{
+		Name:      "STATE_STORAGE_MINIO_ENDPOINT",
+		ValueFrom: s3EndpointEnvSource,
+	})
+	envVars = append(envVars, corev1.EnvVar{
+		Name:      "S3_MINIO_ENDPOINT",
+		ValueFrom: s3EndpointEnvSource,
+	})
+	envVars = append(envVars, corev1.EnvVar{
+		Name:  "AIRBYTE_API_AUTH_HEADER_NAME",
+		Value: "X-Airbyte-Auth",
+	})
+	envVars = append(envVars, corev1.EnvVar{
+		Name:  "AIRBYTE_API_AUTH_HEADER_VALUE",
+		Value: "Internal server",
+	})
 	envVars = append(envVars, corev1.EnvVar{
 		Name:  "LOG_LEVEL",
 		Value: "INFO",
 	})
 
-	for _, secretVarName := range secretVarNames {
-		envVar := corev1.EnvVar{
-			Name: secretVarName,
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					Key: secretVarName,
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: createNameForRoleGroup(instance, "secrets", ""),
-					},
-				},
-			},
-		}
-		envVars = append(envVars, envVar)
-	}
+	envVars = append(envVars, corev1.EnvVar{
+		Name:  "WEBAPP_URL",
+		Value: getSvcUrl(instance, Webapp, groupName),
+	})
+	// append temporal host env vars
+	envVars = append(envVars, corev1.EnvVar{
+		Name:  "TEMPORAL_HOST",
+		Value: getSvcHost(instance, Temporal, groupName),
+	})
+	//append connector builder server host to env vars
+	envVars = append(envVars, corev1.EnvVar{
+		Name:  "CONNECTOR_BUILDER_SERVER_API_HOST",
+		Value: getSvcUrl(instance, ConnectorBuilderServer, groupName),
+	})
 	return envVars
 }

@@ -5,6 +5,21 @@ import (
 	stackv1alpha1 "github.com/zncdata-labs/airbyte-operator/api/v1alpha1"
 )
 
+func (r *AirbyteReconciler) ReconcilePod(ctx context.Context, instance *stackv1alpha1.Airbyte) error {
+	// list tasks of reconcile pod
+	tasks := []AirByteRoleReconcileTask{
+		{
+			Role:     Bootloader,
+			function: r.reconcileBootloaderPod,
+		},
+	}
+	// reconcile pod tasks
+	if err := reconcileRoleTask(tasks, ctx, instance, r.Log, ResourceReconcileErrTemp, Pod); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (r *AirbyteReconciler) reconcileIngress(ctx context.Context, instance *stackv1alpha1.Airbyte) error {
 	// list tasks of reconcile ingress
 	tasks := []AirByteRoleReconcileTask{

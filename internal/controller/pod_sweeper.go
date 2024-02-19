@@ -29,7 +29,7 @@ func (r *AirbyteReconciler) extractPodSweeperDeploymentForRoleGroup(params Extra
 	roleCfg := server.RoleConfig
 	clusterCfg := params.cluster
 	roleGroupName := params.roleGroupName
-	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg)
+	mergedLabels := r.mergeLabels(groupCfg, instance.GetLabels(), clusterCfg, PodSweeper)
 	schema := params.scheme
 
 	realGroupCfg := groupCfg.(*stackv1alpha1.PodSweeperRoleConfigSpec)
@@ -193,7 +193,7 @@ func (r *AirbyteReconciler) reconcilePodSweeperConfigMap(ctx context.Context, in
 func (r *AirbyteReconciler) extractPodSweeperConfigMapForRoleGroup(params ExtractorParams) (client.Object, error) {
 	instance := params.instance.(*stackv1alpha1.Airbyte)
 	clusterCfg := params.cluster
-	mergedLabels := r.mergeLabels(params.roleGroup, instance.GetLabels(), clusterCfg)
+	mergedLabels := r.mergeLabels(params.roleGroup, instance.GetLabels(), clusterCfg, PodSweeper)
 	schema := params.scheme
 	configMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
