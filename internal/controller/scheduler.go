@@ -1,8 +1,8 @@
 package controller
 
 import (
-	stackv1alpha1 "github.com/zncdata-labs/airbyte-operator/api/v1alpha1"
-	"github.com/zncdata-labs/airbyte-operator/api/v1alpha1/rolegroup"
+	stackv1alpha1 "github.com/zncdatadev/airbyte-operator/api/v1alpha1"
+	"github.com/zncdatadev/airbyte-operator/api/v1alpha1/rolegroup"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 )
