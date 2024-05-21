@@ -1,7 +1,7 @@
 package rolegroup
 
 import (
-	"github.com/zncdata-labs/airbyte-operator/api/v1alpha1"
+	"github.com/zncdatadev/airbyte-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 )
 

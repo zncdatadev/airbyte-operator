@@ -4,8 +4,8 @@ import (
 	"context"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	stackv1alpha1 "github.com/zncdata-labs/airbyte-operator/api/v1alpha1"
-	//"github.com/zncdata-labs/airbyte-operator/api/v1alpha1"
+	stackv1alpha1 "github.com/zncdatadev/airbyte-operator/api/v1alpha1"
+	//"github.com/zncdatadev/airbyte-operator/api/v1alpha1"
 )
 
 var _ = Describe("Role Group Controller", func() {

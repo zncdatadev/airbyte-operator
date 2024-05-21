@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	stackv1alpha1 "github.com/zncdata-labs/airbyte-operator/api/v1alpha1"
-	opgo "github.com/zncdata-labs/operator-go/pkg/apis/commons/v1alpha1"
-	"github.com/zncdata-labs/operator-go/pkg/errors"
+	"strconv"
+	"strings"
+
+	stackv1alpha1 "github.com/zncdatadev/airbyte-operator/api/v1alpha1"
+	opgo "github.com/zncdatadev/operator-go/pkg/apis/commons/v1alpha1"
+	"github.com/zncdatadev/operator-go/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,8 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/json"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strconv"
-	"strings"
 )
 
 // reconcile cluster config map
@@ -575,7 +576,7 @@ func (r *AirbyteReconciler) extractClusterSecret(params ExtractorParams) (client
 
 func (r *AirbyteReconciler) makeS3Data(s3Connection *opgo.S3Connection, data *map[string][]byte) {
 	if s3Connection != nil {
-		s3Credential := s3Connection.Spec.S3Credential
+		s3Credential := s3Connection.Spec.Credential
 		(*data)["AWS_ACCESS_KEY_ID"] = []byte(s3Credential.AccessKey)
 		(*data)["AWS_SECRET_ACCESS_KEY"] = []byte(s3Credential.SecretKey)
 		(*data)["AWS_DEFAULT_REGION"] = []byte(s3Connection.Spec.Region)

@@ -3,8 +3,8 @@ package controller
 import (
 	"context"
 	"encoding/base64"
-	stackv1alpha1 "github.com/zncdata-labs/airbyte-operator/api/v1alpha1"
-	opgo "github.com/zncdata-labs/operator-go/pkg/apis/commons/v1alpha1"
+	stackv1alpha1 "github.com/zncdatadev/airbyte-operator/api/v1alpha1"
+	opgo "github.com/zncdatadev/operator-go/pkg/apis/commons/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

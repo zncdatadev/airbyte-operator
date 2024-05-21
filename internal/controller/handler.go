@@ -2,7 +2,7 @@ package controller
 
 import (
 	"context"
-	stackv1alpha1 "github.com/zncdata-labs/airbyte-operator/api/v1alpha1"
+	stackv1alpha1 "github.com/zncdatadev/airbyte-operator/api/v1alpha1"
 )
 
 func (r *AirbyteReconciler) ReconcilePod(ctx context.Context, instance *stackv1alpha1.Airbyte) error {
